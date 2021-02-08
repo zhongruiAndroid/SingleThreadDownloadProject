@@ -275,6 +275,7 @@ public class DownloadInfo {
                 // TODO: 2021/2/8
                 /*下载新的文件*/
 //                downloadConfig.setSaveFile(reDownloadAndRename(1));
+
 //                DownloadHelper.deleteFile(saveFile);
             } else {
                 /*如果本地已存在下载的文件，直接返回*/
@@ -286,6 +287,8 @@ public class DownloadInfo {
             }
         }
         String fileUrl=downloadConfig.getFileDownloadUrl();
+        /*获取本地是否存在下载记录*/
+
         HttpURLConnection httpURLConnection = null;
         try {
             URL url = new URL(fileUrl);

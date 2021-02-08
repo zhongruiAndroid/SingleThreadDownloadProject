@@ -2,6 +2,7 @@ package com.github.singlethreaddownload.helper;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
@@ -112,19 +113,15 @@ public class DownloadHelper {
         if (context == null || downloadSize <= 0) {
             return true;
         }
-        long space;
-        File externalCacheDir = context.getExternalCacheDir();
-        if (externalCacheDir == null) {
-            space = -1;
-        } else {
-            space = externalCacheDir.getFreeSpace();
+        long space = -1;
+        File downloadCacheFile = null;
+        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+            downloadCacheFile = context.getExternalCacheDir();
         }
-        File filesDir = context.getFilesDir();
-        if (space != -1) {
-            space = Math.min(space, filesDir.getFreeSpace());
-        } else {
-            space = filesDir.getFreeSpace();
+        if (downloadCacheFile == null) {
+            downloadCacheFile = context.getFilesDir();
         }
+        space = downloadCacheFile.getFreeSpace();
         return space > downloadSize;
     }
 
