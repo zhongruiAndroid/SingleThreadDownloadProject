@@ -1,0 +1,3 @@
+rootProject.name='SingleThreadDownloadProject'
+include ':app'
+include ':SingleThreadDownload'
