@@ -139,9 +139,7 @@ public class DownloadInfo {
         }
         setStatus(STATUS_PAUSE);
         /*手动暂停时把内存的缓存信息保存至本地*/
-        if (downloadRecord != null) {
-            saveDownloadCacheInfo(downloadRecord);
-        }
+        saveDownloadCacheInfo(downloadRecord);
         DownloadHelper.get().getHandler().post(new Runnable() {
             @Override
             public void run() {
@@ -243,6 +241,12 @@ public class DownloadInfo {
     public void download() {
         if (downloadConfig == null) {
             getDownloadListener().onError();
+            return;
+        }
+        String fileUrl = downloadConfig.getFileDownloadUrl();
+        if (TextUtils.isEmpty(fileUrl)) {
+            getDownloadListener().onError();
+            return;
         }
         if (getStatus() == STATUS_CONNECT||getStatus() == STATUS_PROGRESS) {
             return;
@@ -282,17 +286,6 @@ public class DownloadInfo {
         if(getStatus()==0){
             /*开始下载时，需要判断是否存在其他相同的下载任务*/
             repeatDownloadAndReUnionId(downloadConfig,1);
-        }
-
-        String fileUrl = downloadConfig.getFileDownloadUrl();
-        if (TextUtils.isEmpty(fileUrl)) {
-            DownloadHelper.get().getHandler().post(new Runnable() {
-                @Override
-                public void run() {
-                    getDownloadListener().onError();
-                }
-            });
-            return;
         }
         reset();
         /*下载完成后需要保存的文件*/
@@ -345,7 +338,7 @@ public class DownloadInfo {
         BufferedInputStream bis = null;
         RandomAccessFile randomAccessFile = null;
         try {
-            URL url = new URL(fileUrl);
+            URL url = new URL(downloadConfig.getFileDownloadUrl());
             httpURLConnection = (HttpURLConnection) url.openConnection();
             httpURLConnection.setConnectTimeout(30000);
             httpURLConnection.setReadTimeout(30000);
@@ -410,12 +403,11 @@ public class DownloadInfo {
                 httpURLConnection.disconnect();
             }
         }
+        saveDownloadCacheInfo(downloadRecord);
         /*下载完成重命名文件*/
         getDownloadConfig().getTempSaveFile().renameTo(downloadConfig.getSaveFile());
         success(downloadConfig.getSaveFile());
     }
-
-    private long preSaveDownloadRecordTime;
 
     /*边下载边保存当前下载进度*/
     private void saveDownloadCacheInfo(DownloadRecord downloadRecord) {
@@ -424,12 +416,8 @@ public class DownloadInfo {
         }
         DownloadHelper.get().saveRecord(downloadConfig.getDownloadSPName(),downloadRecord);
     }
-
-    public String getFileDownloadUrl() {
-        if (downloadConfig == null) {
-            return "";
-        }
-        return downloadConfig.getFileDownloadUrl();
+    public void notifySaveRecord(){
+        saveDownloadCacheInfo(downloadRecord);
     }
 
     public DownloadConfig getDownloadConfig() {
