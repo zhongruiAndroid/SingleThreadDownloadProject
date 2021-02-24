@@ -115,19 +115,12 @@ public class DownloadConfig implements Serializable {
                 saveFile.getParentFile().mkdirs();
             }
             this.saveFile = saveFile;
-            createTempSaveFileBySaveFile(saveFile);
+            this.tempSaveFile=createTempSaveFileBySaveFile(saveFile);
             return this;
         }
 
         public Builder setSaveFile(String filePath, String fileName) {
             setSaveFile(new File(filePath, fileName));
-            return this;
-        }
-
-        public Builder createTempSaveFileBySaveFile(File saveFile) {
-            String name = saveFile.getName();
-            String substring = name.substring(0, name.lastIndexOf("."));
-            this.tempSaveFile = new File(saveFile.getParent(), substring + ".temp");
             return this;
         }
 
@@ -177,11 +170,17 @@ public class DownloadConfig implements Serializable {
 
     public void setSaveFile(File saveFile) {
         this.saveFile = saveFile;
+        this.tempSaveFile=createTempSaveFileBySaveFile(saveFile);
         if(TextUtils.isEmpty(unionId)){
             unionId=getSaveFile().getAbsolutePath().hashCode()+"";
         }
     }
-
+    public static File createTempSaveFileBySaveFile(File saveFile) {
+        String name = saveFile.getName();
+        String substring = name.substring(0, name.lastIndexOf("."));
+        File tempSaveFile = new File(saveFile.getParent(), substring + ".temp");
+        return tempSaveFile;
+    }
     public File getTempSaveFile() {
         return tempSaveFile;
     }

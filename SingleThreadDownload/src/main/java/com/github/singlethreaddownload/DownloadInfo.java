@@ -105,12 +105,9 @@ public class DownloadInfo {
     }
 
     private void changeStatus(int changeStatus) {
-
         if (getStatus() == STATUS_SUCCESS) {
-            // TODO:
             return;
         }
-
         switch (changeStatus) {
             case STATUS_PAUSE:
                 pause();
@@ -210,30 +207,36 @@ public class DownloadInfo {
     }
 
     private void progress(final long downloadSize) {
-        saveDownloadCacheInfo(downloadRecord);
-        final long progress = downloadProgress.addAndGet(downloadSize);
+        // TODO: 2021/2/24 按照规则将内存数据保存到本地
+//        saveDownloadCacheInfo(downloadRecord);
+        long progress = downloadProgress.addAndGet(downloadSize);
+        //计算网速
+        if (downloadConfig.isNeedSpeed()) {
+            long nowTime = System.currentTimeMillis();
+            if (preTime <= 0) {
+                tempDownloadSize = 0;
+                preTime = nowTime;
+            }
+            long timeInterval = nowTime - preTime;
+            if (timeInterval >= tempTimeInterval) {
+                tempTimeInterval = 1000;
+                final float speedBySecond = (downloadSize-tempDownloadSize) * 1000f / timeInterval;
+                preTime = nowTime;
+                tempDownloadSize = downloadSize;
+                DownloadHelper.get().getHandler().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        getDownloadListener().onSpeed(Float.parseFloat(String.format("%.1f", speedBySecond)));
+                    }
+                });
+            } else {
+                tempDownloadSize = downloadSize;
+            }
+        }
         DownloadHelper.get().getHandler().post(new Runnable() {
             @Override
             public void run() {
-                //计算网速
-                if (downloadConfig.isNeedSpeed()) {
-                    long nowTime = System.currentTimeMillis();
-                    if (preTime <= 0) {
-                        tempDownloadSize = 0;
-                        preTime = nowTime;
-                    }
-                    long timeInterval = nowTime - preTime;
-                    if (timeInterval >= tempTimeInterval) {
-                        tempTimeInterval = 1000;
-                        float speedBySecond = tempDownloadSize * 1000f / timeInterval / 1024;
-                        preTime = nowTime;
-                        tempDownloadSize = 0;
-                        getDownloadListener().onSpeed(Float.parseFloat(String.format("%.1f", speedBySecond)));
-                    } else {
-                        tempDownloadSize += downloadSize;
-                    }
-                }
-                getDownloadListener().onProgress(progress + localCacheSize, totalSize);
+                getDownloadListener().onProgress(downloadSize, totalSize);
             }
         });
     }
@@ -290,7 +293,7 @@ public class DownloadInfo {
 
         /*先判断内存是否存在数据，不存在再读取本地缓存配置*/
         if (DownloadRecord.isEmpty(downloadRecord)) {
-            downloadRecord = DownloadHelper.get().getRecord(getDownloadConfig().getSaveFile().getAbsolutePath());
+            downloadRecord = DownloadHelper.get().getRecord(getDownloadConfig().getUnionId());
         }
         /*如果没有下载记录，那么需要删除之前已经下载的临时文件*/
         long startPoint = 0;
@@ -329,8 +332,8 @@ public class DownloadInfo {
             httpURLConnection.setRequestProperty("Range", "bytes=" + startPoint + "-");
             httpURLConnection.connect();
             int responseCode = httpURLConnection.getResponseCode();
-            long contentLength = getContentLength(httpURLConnection);
-            Log.i("=====","====contentLength="+contentLength);
+            long contentLength = getContentLength(httpURLConnection)+startPoint;
+            Log.i("=====", "====contentLength=" + contentLength);
             connect(contentLength);
             if (contentLength <= 0) {
                 error();
@@ -365,13 +368,16 @@ public class DownloadInfo {
             byte[] buff = new byte[getDownloadConfig().getDownloadBufferSize()];
             int len = 0;
             bis = new BufferedInputStream(inputStream);
-            randomAccessFile = new RandomAccessFile(saveFile, "rw");
+            randomAccessFile = new RandomAccessFile(downloadConfig.getTempSaveFile(), "rw");
             randomAccessFile.seek(startPoint);
             while ((len = bis.read(buff)) != -1) {
                 downloadRecord.addDownloadLength(len);
                 randomAccessFile.write(buff, 0, len);
                 progress(downloadRecord.getDownloadLength());
-                Log.i("=====","====progress="+downloadRecord.getDownloadLength());
+                Log.i("=====", "====progress=" + downloadRecord.getDownloadLength());
+                if (getStatus() == STATUS_PAUSE) {
+                    return;
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -396,15 +402,6 @@ public class DownloadInfo {
         if (downloadRecord == null) {
             return;
         }
-        int status = getStatus();
-        if (status == STATUS_ERROR) {
-            return;
-        }
-        long nowTime = System.currentTimeMillis();
-        if (nowTime - preSaveDownloadRecordTime < 1200) {
-            return;
-        }
-        preSaveDownloadRecordTime = nowTime;
         DownloadHelper.get().saveRecord(downloadRecord);
     }
 

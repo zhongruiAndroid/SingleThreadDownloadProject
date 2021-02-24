@@ -11,7 +11,7 @@ public class DownloadRecord implements Serializable {
     /*需要下载的文件长度*/
     private long fileSize;
     /*该文件已经下载的长度*/
-    private long downloadLength;
+    private volatile long downloadLength;
     /*下载地址*/
     private String downloadUrl;
     /*保存路径*/
@@ -123,7 +123,7 @@ public class DownloadRecord implements Serializable {
         try {
             jsonObject.put("fileSize", getFileSize());
             jsonObject.put("downloadLength", getDownloadLength());
-            jsonObject.put("downloadUrl", getDownloadLength());
+            jsonObject.put("downloadUrl", getDownloadUrl());
             jsonObject.put("saveFilePath", getSaveFilePath());
             jsonObject.put("uniqueId", getUniqueId());
         } catch (JSONException e) {

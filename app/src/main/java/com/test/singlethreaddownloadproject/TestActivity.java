@@ -3,6 +3,7 @@ package com.test.singlethreaddownloadproject;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.AppCompatCheckBox;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
@@ -101,6 +102,7 @@ public class TestActivity extends AppCompatActivity implements View.OnClickListe
             }
             @Override
             public void onProgress(long progress, long totalSize) {
+                Log.i("=====","===onProgress=="+progress);
                 tvResult.setText("下载中");
                 tvProgress.setText(progress+"/"+totalSize);
                 pbProgress.setProgress((int) progress);
