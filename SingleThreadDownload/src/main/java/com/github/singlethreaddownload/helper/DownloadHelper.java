@@ -85,65 +85,58 @@ public class DownloadHelper {
 
     private final String sp_file_name = "zr_single_download_sp";
 
-    public DownloadRecord getRecord(String downloadFileUrl) {
+    public DownloadRecord getRecord(String saveFilePath) {
         SharedPreferences sp = FileDownloadManager.getContext().getSharedPreferences(sp_file_name, Context.MODE_PRIVATE);
-        String downloadRecord = sp.getString(downloadFileUrl.hashCode() + "", null);
+        String downloadRecord = sp.getString(saveFilePath.hashCode() + "", null);
         return DownloadRecord.fromJson(downloadRecord);
     }
 
-    public void saveRecord(DownloadRecord downloadRecord, String downloadFileUrl) {
-        if (downloadRecord == null || TextUtils.isEmpty(downloadFileUrl)) {
+    public void saveRecord(DownloadRecord downloadRecord) {
+        if (downloadRecord == null || TextUtils.isEmpty(downloadRecord.getSaveFilePath())) {
             return;
         }
         String json = downloadRecord.toJson();
         if (sp == null) {
             sp = FileDownloadManager.getContext().getSharedPreferences(sp_file_name, Context.MODE_PRIVATE);
         }
-        sp.edit().putString(downloadFileUrl.hashCode() + "", json).commit();
+        sp.edit().putString(downloadRecord.getSaveFilePath().hashCode() + "", json).commit();
     }
 
-    public void clearRecord(String downloadFileUrl) {
+    public void clearRecord(String saveFilePath) {
+        if (TextUtils.isEmpty(saveFilePath)) {
+            return;
+        }
         if (sp == null) {
             sp = FileDownloadManager.getContext().getSharedPreferences(sp_file_name, Context.MODE_PRIVATE);
         }
-        sp.edit().remove(downloadFileUrl.hashCode() + "").commit();
+        sp.edit().remove(saveFilePath.hashCode() + "").commit();
     }
 
     public static boolean hasFreeSpace(Context context, long downloadSize) {
         if (context == null || downloadSize <= 0) {
             return true;
         }
-        long space = -1;
-        File downloadCacheFile = null;
+        File externalCacheDir = null;
         if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            downloadCacheFile = context.getExternalCacheDir();
+            externalCacheDir = context.getExternalCacheDir();
         }
-        if (downloadCacheFile == null) {
-            downloadCacheFile = context.getFilesDir();
+        if (externalCacheDir != null) {
+            return externalCacheDir.getFreeSpace() > downloadSize;
         }
-        space = downloadCacheFile.getFreeSpace();
-        return space > downloadSize;
+        externalCacheDir = context.getFilesDir();
+        return externalCacheDir.getFreeSpace() > downloadSize;
     }
 
-    public Pair<Long, Long> getProgressByUrl(String fileDownloadUrl) {
-        DownloadRecord record = getRecord(fileDownloadUrl);
+    public Pair<Long, Long> getProgressByFilePath(String saveFilePath) {
+        DownloadRecord record = getRecord(saveFilePath);
         if (record == null || record.getFileSize() <= 0) {
             return new Pair(new Long(0), new Long(0));
         }
-       /* List<DownloadRecord.FileRecord> fileRecordList = record.getFileRecordList();
-        if (fileRecordList == null || fileRecordList.isEmpty()) {
-            return new Pair(new Long(0), new Long(0));
-        }
-        long localCacheSize = 0;
-        for (DownloadRecord.FileRecord fileRecord : fileRecordList) {
-            localCacheSize += fileRecord.getDownloadLength();
-        }*/
-        return new Pair(new Long(1), new Long(record.getFileSize()));
+        return new Pair(new Long(record.getDownloadLength()), new Long(record.getFileSize()));
     }
 
-
     /*重新下载时重命名*/
-    /*public static File reDownloadAndRename(File saveFile, int reNum) {
+    public static File reDownloadAndRename(File saveFile, int reNum) {
         String parent = saveFile.getParent();
         String name = saveFile.getName();
         String newName = name.replace(".", "(" + reNum + ").");
@@ -151,7 +144,7 @@ public class DownloadHelper {
         if (!newFile.exists()) {
             return newFile;
         } else {
-            return reDownloadAndRename(saveFile,reNum + 1);
+            return reDownloadAndRename(saveFile, reNum + 1);
         }
-    }*/
+    }
 }

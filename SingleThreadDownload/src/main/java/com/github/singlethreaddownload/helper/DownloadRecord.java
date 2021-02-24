@@ -2,31 +2,35 @@ package com.github.singlethreaddownload.helper;
 
 import android.text.TextUtils;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 
 public class DownloadRecord implements Serializable {
+    /*需要下载的文件长度*/
     private long fileSize;
+    /*该文件已经下载的长度*/
     private long downloadLength;
-    private String uniqueId;
+    /*下载地址*/
     private String downloadUrl;
+    /*保存路径*/
+    private String saveFilePath;
+    /*下载任务的唯一标识*/
+    private String uniqueId;
 
+    public static String createUIDByFilePath(String saveFilePath){
+        if(TextUtils.isEmpty(saveFilePath)){
+            return "";
+        }
+        return saveFilePath.hashCode()+"";
+    }
+    /*第一次初始化下载*/
     /*从缓存获取数据*/
-    private DownloadRecord(long fileSize, String uniqueId) {
+    public DownloadRecord(long fileSize, String uniqueId) {
         this.fileSize = fileSize;
         this.uniqueId = uniqueId;
     }
-
-    /*第一次初始化下载*/
-    public DownloadRecord(long fileSize) {
-        this.fileSize = fileSize;
-    }
-
 
     public long getFileSize() {
         return fileSize;
@@ -38,6 +42,9 @@ public class DownloadRecord implements Serializable {
 
     public void setUniqueId(String uniqueId) {
         this.uniqueId = uniqueId;
+        if(TextUtils.isEmpty(uniqueId)&&!TextUtils.isEmpty(saveFilePath)){
+            this.uniqueId=saveFilePath.hashCode()+"";
+        }
     }
 
     public String getUniqueId() {
@@ -55,29 +62,49 @@ public class DownloadRecord implements Serializable {
         this.downloadUrl = downloadUrl;
     }
 
+    public long getDownloadLength() {
+        return downloadLength;
+    }
+
+    public void setDownloadLength(long downloadLength) {
+        this.downloadLength = downloadLength;
+    }
+    public void addDownloadLength(long downloadLength) {
+        this.downloadLength = this.downloadLength+downloadLength;
+    }
+
+    public String getSaveFilePath() {
+        return saveFilePath;
+    }
+
+    public void setSaveFilePath(String saveFilePath) {
+        this.saveFilePath = saveFilePath;
+        if(TextUtils.isEmpty(uniqueId)&&!TextUtils.isEmpty(saveFilePath)){
+            uniqueId=saveFilePath.hashCode()+"";
+        }
+    }
+
     public static DownloadRecord fromJson(String json) {
         DownloadRecord downloadRecord;
         if (TextUtils.isEmpty(json)) {
-            downloadRecord = new DownloadRecord(0);
+            downloadRecord = new DownloadRecord(0,"");
             return downloadRecord;
         }
         try {
             JSONObject jsonObject = new JSONObject(json);
             long fileSize = jsonObject.optLong("fileSize");
+            long downloadLength = jsonObject.optLong("downloadLength");
+            String downloadUrl = jsonObject.optString("downloadUrl");
+            String saveFilePath = jsonObject.optString("saveFilePath");
             String uniqueId = jsonObject.optString("uniqueId");
-            JSONArray fileRecordList = jsonObject.optJSONArray("fileRecordList");
+
             downloadRecord = new DownloadRecord(fileSize, uniqueId);
-            downloadRecord.fileSize = fileSize;
-            if (fileRecordList != null && fileRecordList.length() > 0) {
-                for (int i = 0; i < fileRecordList.length(); i++) {
-                    JSONObject itemObj = fileRecordList.getJSONObject(i);
-                    FileRecord record = new FileRecord();
-                    record.setStartPoint(itemObj.optLong("startPoint"));
-                    record.setEndPoint(itemObj.optLong("endPoint"));
-                    record.setDownloadLength(itemObj.optLong("downloadLength"));
-                    downloadRecord.addFileRecordList(record);
-                }
-            }
+            downloadRecord.fileSize=fileSize;
+            downloadRecord.downloadLength=downloadLength;
+            downloadRecord.downloadUrl=downloadUrl;
+            downloadRecord.saveFilePath=saveFilePath;
+            downloadRecord.uniqueId=uniqueId;
+
         } catch (JSONException e) {
             e.printStackTrace();
             downloadRecord = new DownloadRecord(0, "");
@@ -89,16 +116,10 @@ public class DownloadRecord implements Serializable {
         JSONObject jsonObject = new JSONObject();
         try {
             jsonObject.put("fileSize", getFileSize());
+            jsonObject.put("downloadLength", getDownloadLength());
+            jsonObject.put("downloadUrl", getDownloadLength());
+            jsonObject.put("saveFilePath", getSaveFilePath());
             jsonObject.put("uniqueId", getUniqueId());
-            JSONArray jsonArray = new JSONArray();
-            for (FileRecord fileRecord : getFileRecordList()) {
-                JSONObject itemJson = new JSONObject();
-                itemJson.put("startPoint", fileRecord.getStartPoint());
-                itemJson.put("endPoint", fileRecord.getEndPoint());
-                itemJson.put("downloadLength", fileRecord.getDownloadLength());
-                jsonArray.put(itemJson);
-            }
-            jsonObject.put("fileRecordList", jsonArray);
         } catch (JSONException e) {
             e.printStackTrace();
         }

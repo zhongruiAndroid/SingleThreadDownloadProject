@@ -8,13 +8,14 @@ import java.io.File;
 import java.io.Serializable;
 
 public class DownloadConfig implements Serializable {
+    private String unionId;
     /*下载成功的文件*/
     private File saveFile;
     /*下载中的文件*/
     private File tempSaveFile;
     /*重新下载，忽略之前下载的进度*/
     private boolean reDownload;
-    /*如果要下载的文件存在，是否重新下载新的文件*/
+    /*如果要下载的文件存在，是否删除之前的重新下载*/
     private boolean ifExistAgainDownload;
     /*下载地址*/
     private String fileDownloadUrl;
@@ -22,6 +23,9 @@ public class DownloadConfig implements Serializable {
     private boolean useSourceName;
     /*是否需要用到下载速度*/
     private boolean needSpeed;
+    /*下载缓冲大小*/
+    private int downloadBufferSize;
+
 
 
     protected DownloadConfig(Builder builder) {
@@ -50,9 +54,9 @@ public class DownloadConfig implements Serializable {
             if (builder.useSourceName && !TextUtils.isEmpty(fileDownloadUrl)) {
                 int index = fileDownloadUrl.lastIndexOf("/");
                 String fileName = fileDownloadUrl.substring(index);
-                if (builder.saveFile.isFile()) {
+                if(builder.saveFile.isFile()){
                     builder.setSaveFile(new File(builder.saveFile.getParent(), fileName));
-                } else {
+                }else{
                     builder.setSaveFile(new File(builder.saveFile, fileName));
                 }
             }
@@ -64,10 +68,14 @@ public class DownloadConfig implements Serializable {
         this.ifExistAgainDownload = builder.ifExistAgainDownload;
         this.fileDownloadUrl = builder.fileDownloadUrl;
         this.useSourceName = builder.useSourceName;
+
+        this.unionId=builder.unionId;
         this.needSpeed = builder.needSpeed;
+        this.downloadBufferSize = builder.downloadBufferSize;
     }
 
     public static class Builder {
+        private String unionId;
         private Context context;
         private String downloadFileSavePath;
 
@@ -87,19 +95,17 @@ public class DownloadConfig implements Serializable {
         /*是否需要用到下载速度*/
         private boolean needSpeed;
 
-        /*单个任务多线程下载数量*/
+        /*下载缓冲大小*/
+        private int downloadBufferSize;
+
 
         public Builder() {
             context = FileDownloadManager.getContext();
-            boolean sdCardCanReadAndWrite = Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState());
-            File useDownloadFile = null;
-            if (sdCardCanReadAndWrite) {
-                useDownloadFile = context.getExternalFilesDir("download");
-                if (useDownloadFile != null) {
-                    downloadFileSavePath = useDownloadFile.getAbsolutePath();
-                }
-            }
-            if (useDownloadFile == null) {
+            boolean sdCardCanReadAndWrite = Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED);
+            File useDownloadFile = context.getExternalFilesDir("download");
+            if (sdCardCanReadAndWrite && useDownloadFile != null) {
+                downloadFileSavePath = useDownloadFile.getAbsolutePath();
+            } else {
                 downloadFileSavePath = context.getFilesDir() + File.separator + "download";
             }
         }
@@ -141,6 +147,7 @@ public class DownloadConfig implements Serializable {
         }
 
 
+
         public Builder setNeedSpeed(boolean needSpeed) {
             this.needSpeed = needSpeed;
             return this;
@@ -150,10 +157,17 @@ public class DownloadConfig implements Serializable {
             this.reDownload = reDownload;
             return this;
         }
+        public void setUnionId(String unionId) {
+            this.unionId = unionId;
+        }
 
         public DownloadConfig build() {
             DownloadConfig downloadConfig = new DownloadConfig(this);
             return downloadConfig;
+        }
+
+        public void setDownloadBufferSize(int downloadBufferSize) {
+            this.downloadBufferSize = downloadBufferSize;
         }
     }
 
@@ -186,4 +200,15 @@ public class DownloadConfig implements Serializable {
     }
 
 
+
+    public String getUnionId() {
+        return unionId;
+    }
+
+    public int getDownloadBufferSize() {
+        if(downloadBufferSize<20480){
+            downloadBufferSize=20480;
+        }
+        return downloadBufferSize;
+    }
 }
