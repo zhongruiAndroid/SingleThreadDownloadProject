@@ -49,7 +49,7 @@ public class DownloadRecord implements Serializable {
 
     public String getUniqueId() {
         if (TextUtils.isEmpty(uniqueId)) {
-            uniqueId = "";
+            uniqueId = getSaveFilePath().hashCode()+"";
         }
         return uniqueId;
     }
@@ -83,6 +83,9 @@ public class DownloadRecord implements Serializable {
             uniqueId=saveFilePath.hashCode()+"";
         }
     }
+    public boolean isCompleteDownload(){
+        return this.fileSize==this.downloadLength&&this.fileSize>0;
+    }
 
     public static DownloadRecord fromJson(String json) {
         DownloadRecord downloadRecord;
@@ -110,6 +113,9 @@ public class DownloadRecord implements Serializable {
             downloadRecord = new DownloadRecord(0, "");
         }
         return downloadRecord;
+    }
+    public static boolean isEmpty(DownloadRecord downloadRecord){
+        return downloadRecord==null||downloadRecord.getFileSize()<=0;
     }
 
     public String toJson() {

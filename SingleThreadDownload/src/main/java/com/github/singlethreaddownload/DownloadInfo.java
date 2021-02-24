@@ -1,6 +1,7 @@
 package com.github.singlethreaddownload;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.github.singlethreaddownload.helper.DownloadHelper;
 import com.github.singlethreaddownload.helper.DownloadRecord;
@@ -125,7 +126,7 @@ public class DownloadInfo {
         }
         if (downloadConfig != null) {
             DownloadHelper.deleteFile(downloadConfig.getTempSaveFile());
-            DownloadHelper.get().clearRecord(downloadConfig.getFileDownloadUrl());
+            DownloadHelper.get().clearRecordByFlag(downloadConfig.getSaveFile().getAbsolutePath());
         }
         setStatus(STATUS_ERROR);
         DownloadHelper.get().getHandler().post(new Runnable() {
@@ -203,7 +204,6 @@ public class DownloadInfo {
     private long tempTimeInterval = 200;
 
     private void reset() {
-
         preTime = 0;
         tempDownloadSize = 0;
         localCacheSize = 0;
@@ -277,8 +277,7 @@ public class DownloadInfo {
         /*如果存在已下载完成的文件*/
         if (saveFile != null && saveFile.exists() && saveFile.isFile()) {
             if (downloadConfig.isIfExistAgainDownload()) {
-                DownloadHelper.deleteFile(saveFile);
-//                downloadConfig.setSaveFile(reDownloadAndRename(1));
+                downloadConfig.setSaveFile(DownloadHelper.reDownloadAndRename(saveFile, 1));
             } else {
                 /*如果本地已存在下载的文件，直接返回*/
                 long length = saveFile.length();
@@ -290,34 +289,33 @@ public class DownloadInfo {
         }
 
         /*先判断内存是否存在数据，不存在再读取本地缓存配置*/
-        if (downloadRecord == null || downloadRecord.getFileSize() <= 0) {
+        if (DownloadRecord.isEmpty(downloadRecord)) {
             downloadRecord = DownloadHelper.get().getRecord(getDownloadConfig().getSaveFile().getAbsolutePath());
         }
         /*如果没有下载记录，那么需要删除之前已经下载的临时文件*/
         long startPoint = 0;
-        if (downloadRecord == null || downloadRecord.getFileSize() <= 0) {
+        /*或者如果需要重新下载，忽略之前的下载进度*/
+        if (DownloadRecord.isEmpty(downloadRecord) || (downloadConfig != null && downloadConfig.isReDownload())) {
             DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
-            DownloadHelper.get().clearRecord(downloadConfig.getSaveFile().getAbsolutePath());
-            startPoint = 0;
+            DownloadHelper.get().clearRecordByUnionId(downloadConfig.getUnionId());
             downloadRecord = null;
+
+            startPoint = 0;
         } else {
             startPoint = downloadRecord.getDownloadLength() - 1;
-        }
-        /*如果重新下载，忽略之前的下载进度*/
-        if (downloadConfig != null && downloadConfig.isReDownload()) {
-            DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
-            DownloadHelper.deleteFile(getDownloadConfig().getSaveFile());
-            DownloadHelper.get().clearRecord(downloadConfig.getSaveFile().getAbsolutePath());
-            startPoint = 0;
-            downloadRecord = null;
-        }
-        /*如果本地有下载记录，但是已经下载一部分的本地文件不存在*/
-        if (startPoint > 0) {
-            if (downloadConfig.getTempSaveFile() != null && !downloadConfig.getTempSaveFile().exists()) {
-                DownloadHelper.get().clearRecord(downloadConfig.getSaveFile().getAbsolutePath());
-                downloadRecord = null;
+            if (startPoint < 0) {
+                startPoint = 0;
             }
         }
+        /*如果本地有下载记录，但是下载一部分的本地文件已经不存在了*/
+        if (startPoint > 0) {
+            if (downloadConfig.getTempSaveFile() != null && !downloadConfig.getTempSaveFile().exists()) {
+                DownloadHelper.get().clearRecordByUnionId(downloadConfig.getUnionId());
+                downloadRecord = null;
+                startPoint = 0;
+            }
+        }
+
         HttpURLConnection httpURLConnection = null;
         InputStream inputStream = null;
         // 随机访问文件，可以指定断点续传的起始位置
@@ -332,6 +330,7 @@ public class DownloadInfo {
             httpURLConnection.connect();
             int responseCode = httpURLConnection.getResponseCode();
             long contentLength = getContentLength(httpURLConnection);
+            Log.i("=====","====contentLength="+contentLength);
             connect(contentLength);
             if (contentLength <= 0) {
                 error();
@@ -371,8 +370,9 @@ public class DownloadInfo {
             while ((len = bis.read(buff)) != -1) {
                 downloadRecord.addDownloadLength(len);
                 randomAccessFile.write(buff, 0, len);
+                progress(downloadRecord.getDownloadLength());
+                Log.i("=====","====progress="+downloadRecord.getDownloadLength());
             }
-
         } catch (Exception e) {
             e.printStackTrace();
             error();
@@ -384,25 +384,9 @@ public class DownloadInfo {
                 httpURLConnection.disconnect();
             }
         }
-
-    }
-
-
-    /*如果外部通知下载任务需要删除，检查下载任务是否停止下载*/
-    private synchronized void checkOtherTaskInfoIsDelete() {
-
-        /*所有taskinfo都可删除才是真的可以执行删除操作*/
-        // TODO: 2020/8/31
-        DownloadHelper.deleteFile(downloadConfig.getTempSaveFile());
-        DownloadHelper.deleteFile(downloadConfig.getSaveFile());
-        DownloadHelper.get().clearRecord(downloadConfig.getFileDownloadUrl());
-        delete();
-    }
-
-    /*如果下载任务中某个任务错误，则将其他任务改成error状态*/
-    private void checkOtherTaskInfoIsError() {
-
-        error();
+        /*下载完成重命名文件*/
+        getDownloadConfig().getTempSaveFile().renameTo(downloadConfig.getSaveFile());
+        success(downloadConfig.getSaveFile());
     }
 
     private long preSaveDownloadRecordTime;

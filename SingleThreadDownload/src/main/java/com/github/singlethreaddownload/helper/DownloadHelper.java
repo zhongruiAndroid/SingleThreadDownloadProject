@@ -8,13 +8,11 @@ import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Pair;
 
-
 import com.github.singlethreaddownload.FileDownloadManager;
 
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -85,9 +83,9 @@ public class DownloadHelper {
 
     private final String sp_file_name = "zr_single_download_sp";
 
-    public DownloadRecord getRecord(String saveFilePath) {
+    public DownloadRecord getRecord(String unionId) {
         SharedPreferences sp = FileDownloadManager.getContext().getSharedPreferences(sp_file_name, Context.MODE_PRIVATE);
-        String downloadRecord = sp.getString(saveFilePath.hashCode() + "", null);
+        String downloadRecord = sp.getString(unionId, null);
         return DownloadRecord.fromJson(downloadRecord);
     }
 
@@ -99,17 +97,20 @@ public class DownloadHelper {
         if (sp == null) {
             sp = FileDownloadManager.getContext().getSharedPreferences(sp_file_name, Context.MODE_PRIVATE);
         }
-        sp.edit().putString(downloadRecord.getSaveFilePath().hashCode() + "", json).commit();
+        sp.edit().putString(downloadRecord.getUniqueId(), json).commit();
     }
 
-    public void clearRecord(String saveFilePath) {
-        if (TextUtils.isEmpty(saveFilePath)) {
+    public void clearRecordByFlag(String saveFilePath) {
+        clearRecordByUnionId(saveFilePath.hashCode() + "");
+    }
+    public void clearRecordByUnionId(String unionId) {
+        if (TextUtils.isEmpty(unionId)) {
             return;
         }
         if (sp == null) {
             sp = FileDownloadManager.getContext().getSharedPreferences(sp_file_name, Context.MODE_PRIVATE);
         }
-        sp.edit().remove(saveFilePath.hashCode() + "").commit();
+        sp.edit().remove(unionId).commit();
     }
 
     public static boolean hasFreeSpace(Context context, long downloadSize) {
@@ -127,8 +128,8 @@ public class DownloadHelper {
         return externalCacheDir.getFreeSpace() > downloadSize;
     }
 
-    public Pair<Long, Long> getProgressByFilePath(String saveFilePath) {
-        DownloadRecord record = getRecord(saveFilePath);
+    public Pair<Long, Long> getProgressByUnionId(String unionId) {
+        DownloadRecord record = getRecord(unionId);
         if (record == null || record.getFileSize() <= 0) {
             return new Pair(new Long(0), new Long(0));
         }

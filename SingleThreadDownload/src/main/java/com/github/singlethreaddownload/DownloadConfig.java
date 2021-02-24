@@ -175,6 +175,13 @@ public class DownloadConfig implements Serializable {
         return saveFile;
     }
 
+    public void setSaveFile(File saveFile) {
+        this.saveFile = saveFile;
+        if(TextUtils.isEmpty(unionId)){
+            unionId=getSaveFile().getAbsolutePath().hashCode()+"";
+        }
+    }
+
     public File getTempSaveFile() {
         return tempSaveFile;
     }
@@ -202,6 +209,9 @@ public class DownloadConfig implements Serializable {
 
 
     public String getUnionId() {
+        if(TextUtils.isEmpty(unionId)){
+            unionId=getSaveFile().getAbsolutePath().hashCode()+"";
+        }
         return unionId;
     }
 
