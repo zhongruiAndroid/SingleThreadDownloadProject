@@ -1,7 +1,6 @@
 package com.github.singlethreaddownload;
 
 import android.content.Context;
-import android.support.v4.util.LruCache;
 
 import com.github.singlethreaddownload.listener.FileDownloadListener;
 
@@ -36,9 +35,12 @@ public class FileDownloadManager {
         downloadInfo.pauseDownload();
     }
     public static void deleteDownload(DownloadInfo downloadInfo){
+        deleteDownload(downloadInfo,false);
+    }
+    public static void deleteDownload(DownloadInfo downloadInfo,boolean deleteTaskAndFile){
         if(downloadInfo==null){
             return;
         }
-        downloadInfo.deleteDownload();
+        downloadInfo.deleteDownload(deleteTaskAndFile);
     }
 }

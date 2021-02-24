@@ -98,8 +98,26 @@ public class DownloadInfo {
         changeStatus(STATUS_PAUSE);
     }
 
-    public void deleteDownload() {
-        changeStatus(STATUS_DELETE);
+    public void deleteDownload(boolean deleteTaskAndFile) {
+        int status = getStatus();
+        if (status == STATUS_DELETE) {
+            return;
+        }
+        setStatus(STATUS_DELETE);
+        if(deleteTaskAndFile){
+            DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
+            DownloadHelper.deleteFile(getDownloadConfig().getSaveFile());
+        }else{
+            /*如果不删除源文件，继续保留下载记录*/
+            saveDownloadCacheInfo(downloadRecord);
+        }
+        DownloadHelper.get().getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                getDownloadListener().onDelete();
+            }
+        });
+
     }
 
     private void changeStatus(int changeStatus) {
@@ -388,7 +406,7 @@ public class DownloadInfo {
                 randomAccessFile.write(buff, 0, len);
                 progress(downloadRecord.getDownloadLength());
                 Log.i("=====", "====progress=" + downloadRecord.getDownloadLength());
-                if (getStatus() == STATUS_PAUSE) {
+                if (getStatus() == STATUS_PAUSE||getStatus() == STATUS_DELETE) {
                     return;
                 }
             }
