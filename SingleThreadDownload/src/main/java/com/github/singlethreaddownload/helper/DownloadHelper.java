@@ -13,6 +13,9 @@ import com.github.singlethreaddownload.FileDownloadManager;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -84,31 +87,68 @@ public class DownloadHelper {
     private final String sp_file_name = "zr_single_download_sp";
 
     public DownloadRecord getRecord(String unionId) {
-        SharedPreferences sp = FileDownloadManager.getContext().getSharedPreferences(sp_file_name, Context.MODE_PRIVATE);
+        return getRecord(sp_file_name, unionId);
+    }
+
+    public DownloadRecord getRecord(String spName, String unionId) {
+        if (TextUtils.isEmpty(spName)) {
+            spName = sp_file_name;
+        }
+        SharedPreferences sp = FileDownloadManager.getContext().getSharedPreferences(spName, Context.MODE_PRIVATE);
         String downloadRecord = sp.getString(unionId, null);
         return DownloadRecord.fromJson(downloadRecord);
     }
+    public Map<String,DownloadRecord> getAllRecord( ) {
+        return getAllRecord(sp_file_name);
+    }
+    public Map<String,DownloadRecord> getAllRecord(String spName) {
+        if (TextUtils.isEmpty(spName)) {
+            spName = sp_file_name;
+        }
+        SharedPreferences sp = FileDownloadManager.getContext().getSharedPreferences(spName, Context.MODE_PRIVATE);
+        Map<String, String> all = (Map<String, String>) sp.getAll();
+        Map<String,DownloadRecord> map=new HashMap();
+        if(all!=null){
+            for(Map.Entry<String, String> item:all.entrySet()){
+                String key = item.getKey();
+                DownloadRecord downloadRecord = DownloadRecord.fromJson(item.getValue());
+                map.put(key,downloadRecord);
+            }
+        }
+        return map;
+    }
 
     public void saveRecord(DownloadRecord downloadRecord) {
+        saveRecord(sp_file_name, downloadRecord);
+    }
+
+    public void saveRecord(String spName, DownloadRecord downloadRecord) {
+        if (TextUtils.isEmpty(spName)) {
+            spName = sp_file_name;
+        }
         if (downloadRecord == null || TextUtils.isEmpty(downloadRecord.getSaveFilePath())) {
             return;
         }
         String json = downloadRecord.toJson();
         if (sp == null) {
-            sp = FileDownloadManager.getContext().getSharedPreferences(sp_file_name, Context.MODE_PRIVATE);
+            sp = FileDownloadManager.getContext().getSharedPreferences(spName, Context.MODE_PRIVATE);
         }
         sp.edit().putString(downloadRecord.getUniqueId(), json).commit();
     }
 
-    public void clearRecordByFlag(String saveFilePath) {
-        clearRecordByUnionId(saveFilePath.hashCode() + "");
-    }
     public void clearRecordByUnionId(String unionId) {
+        clearRecordByUnionId(sp_file_name,unionId);
+    }
+
+    public void clearRecordByUnionId(String spName,String unionId) {
+        if (TextUtils.isEmpty(spName)) {
+            spName = sp_file_name;
+        }
         if (TextUtils.isEmpty(unionId)) {
             return;
         }
         if (sp == null) {
-            sp = FileDownloadManager.getContext().getSharedPreferences(sp_file_name, Context.MODE_PRIVATE);
+            sp = FileDownloadManager.getContext().getSharedPreferences(spName, Context.MODE_PRIVATE);
         }
         sp.edit().remove(unionId).commit();
     }

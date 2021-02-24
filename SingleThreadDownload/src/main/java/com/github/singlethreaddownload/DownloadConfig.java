@@ -26,6 +26,8 @@ public class DownloadConfig implements Serializable {
     /*下载缓冲大小*/
     private int downloadBufferSize;
 
+    /*下载记录单独保存具体的xml中*/
+    private String downloadSPName;
 
 
     protected DownloadConfig(Builder builder) {
@@ -98,6 +100,9 @@ public class DownloadConfig implements Serializable {
         /*下载缓冲大小*/
         private int downloadBufferSize;
 
+        /*下载记录单独保存具体的xml中*/
+        private String downloadSPName;
+
 
         public Builder() {
             context = FileDownloadManager.getContext();
@@ -131,6 +136,9 @@ public class DownloadConfig implements Serializable {
 
         public Builder setFileDownloadUrl(String fileDownloadUrl) {
             this.fileDownloadUrl = fileDownloadUrl;
+            if(TextUtils.isEmpty(unionId)&&!TextUtils.isEmpty(fileDownloadUrl)){
+                unionId=fileDownloadUrl.hashCode()+"";
+            }
             return this;
         }
 
@@ -152,6 +160,9 @@ public class DownloadConfig implements Serializable {
         }
         public void setUnionId(String unionId) {
             this.unionId = unionId;
+            if(TextUtils.isEmpty(unionId)&&!TextUtils.isEmpty(fileDownloadUrl)){
+                unionId=fileDownloadUrl.hashCode()+"";
+            }
         }
 
         public DownloadConfig build() {
@@ -162,6 +173,10 @@ public class DownloadConfig implements Serializable {
         public void setDownloadBufferSize(int downloadBufferSize) {
             this.downloadBufferSize = downloadBufferSize;
         }
+
+        public void setDownloadSPName(String downloadSPName) {
+            this.downloadSPName = downloadSPName;
+        }
     }
 
     public File getSaveFile() {
@@ -171,9 +186,6 @@ public class DownloadConfig implements Serializable {
     public void setSaveFile(File saveFile) {
         this.saveFile = saveFile;
         this.tempSaveFile=createTempSaveFileBySaveFile(saveFile);
-        if(TextUtils.isEmpty(unionId)){
-            unionId=getSaveFile().getAbsolutePath().hashCode()+"";
-        }
     }
     public static File createTempSaveFileBySaveFile(File saveFile) {
         String name = saveFile.getName();
@@ -208,10 +220,14 @@ public class DownloadConfig implements Serializable {
 
 
     public String getUnionId() {
-        if(TextUtils.isEmpty(unionId)){
-            unionId=getSaveFile().getAbsolutePath().hashCode()+"";
+        if(TextUtils.isEmpty(unionId)&&!TextUtils.isEmpty(fileDownloadUrl)){
+            unionId=fileDownloadUrl.hashCode()+"";
         }
         return unionId;
+    }
+
+    public void setUnionId(String unionId) {
+        this.unionId = unionId;
     }
 
     public int getDownloadBufferSize() {
@@ -219,5 +235,9 @@ public class DownloadConfig implements Serializable {
             downloadBufferSize=20480;
         }
         return downloadBufferSize;
+    }
+
+    public String getDownloadSPName() {
+        return downloadSPName;
     }
 }

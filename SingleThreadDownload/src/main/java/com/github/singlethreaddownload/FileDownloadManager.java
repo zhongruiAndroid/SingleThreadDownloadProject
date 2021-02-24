@@ -11,7 +11,7 @@ public class FileDownloadManager {
 
     public static Context getContext() {
         if (context == null) {
-            throw new IllegalStateException("please call DownloadManager.init(context)");
+            throw new IllegalStateException("please call FileDownloadManager.init(context)");
         }
         return context;
     }
@@ -19,14 +19,9 @@ public class FileDownloadManager {
     public static void init(Context ctx) {
         context = ctx.getApplicationContext();
     }
-    private static LruCache<String,DownloadInfo> downloadMap =new LruCache<String,DownloadInfo>(6);
 
     public static DownloadInfo download(DownloadConfig config, FileDownloadListener listener) {
-        DownloadInfo downloadInfo= downloadMap.get(config.getFileDownloadUrl());
-        if(downloadInfo==null||config.isIfExistAgainDownload()||config.isReDownload()){
-            downloadInfo = new DownloadInfo(config, listener);
-            downloadMap.put(config.getFileDownloadUrl(),downloadInfo);
-        }
+        DownloadInfo downloadInfo= new DownloadInfo(config, listener);
         downloadInfo.download();
         return downloadInfo;
     }
@@ -45,8 +40,5 @@ public class FileDownloadManager {
             return;
         }
         downloadInfo.deleteDownload();
-        if(downloadMap!=null){
-            downloadMap.remove(downloadInfo.getFileDownloadUrl());
-        }
     }
 }

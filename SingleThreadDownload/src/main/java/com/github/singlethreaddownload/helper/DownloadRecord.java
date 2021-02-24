@@ -42,14 +42,14 @@ public class DownloadRecord implements Serializable {
 
     public void setUniqueId(String uniqueId) {
         this.uniqueId = uniqueId;
-        if(TextUtils.isEmpty(uniqueId)&&!TextUtils.isEmpty(saveFilePath)){
-            this.uniqueId=saveFilePath.hashCode()+"";
+        if(TextUtils.isEmpty(uniqueId)&&!TextUtils.isEmpty(getDownloadUrl())){
+            this.uniqueId=getDownloadUrl().hashCode()+"";
         }
     }
 
     public String getUniqueId() {
         if (TextUtils.isEmpty(uniqueId)) {
-            uniqueId = getSaveFilePath().hashCode()+"";
+            uniqueId = getDownloadUrl().hashCode()+"";
         }
         return uniqueId;
     }
@@ -60,6 +60,9 @@ public class DownloadRecord implements Serializable {
 
     public void setDownloadUrl(String downloadUrl) {
         this.downloadUrl = downloadUrl;
+        if(TextUtils.isEmpty(uniqueId)&&!TextUtils.isEmpty(downloadUrl)){
+            uniqueId=downloadUrl.hashCode()+"";
+        }
     }
 
     public long getDownloadLength() {
@@ -79,9 +82,6 @@ public class DownloadRecord implements Serializable {
 
     public void setSaveFilePath(String saveFilePath) {
         this.saveFilePath = saveFilePath;
-        if(TextUtils.isEmpty(uniqueId)&&!TextUtils.isEmpty(saveFilePath)){
-            uniqueId=saveFilePath.hashCode()+"";
-        }
     }
     public boolean isCompleteDownload(){
         return this.fileSize==this.downloadLength&&this.fileSize>0;

@@ -97,7 +97,7 @@ public class TestActivity extends AppCompatActivity implements View.OnClickListe
 
             @Override
             public void onSpeed(float speedKbBySecond) {
-                tvSpeed.setText("下载速度:"+speedKbBySecond+"kb/s");
+                tvSpeed.setText("下载速度:"+String.format("%.1f", speedKbBySecond/1024f)+"kb/s");
 
             }
             @Override

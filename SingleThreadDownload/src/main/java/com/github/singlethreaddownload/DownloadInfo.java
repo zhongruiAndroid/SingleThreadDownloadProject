@@ -13,10 +13,6 @@ import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class DownloadInfo {
     private FileDownloadListener downloadListener;
@@ -36,19 +32,21 @@ public class DownloadInfo {
     public static final int STATUS_CONNECT = 6;
 
 
-    private AtomicInteger status;
-    private AtomicLong downloadProgress;
+    private int status;
 
     public DownloadInfo(DownloadConfig config, FileDownloadListener listener) {
         this.downloadConfig = config;
         this.downloadListener = listener;
-        status = new AtomicInteger(0);
-        downloadProgress = new AtomicLong(0);
+        status = 0;
     }
 
     public FileDownloadListener getDownloadListener() {
         if (downloadListener == null) {
             downloadListener = new FileDownloadListener() {
+                @Override
+                public boolean onRepeatDownload() {
+                    return false;
+                }
                 @Override
                 public void onConnect(long totalSize) {
 
@@ -89,11 +87,11 @@ public class DownloadInfo {
     }
 
     private void setStatus(int status) {
-        this.status.set(status);
+        this.status=status;
     }
 
     public int getStatus() {
-        return status.get();
+        return status;
     }
 
     public void pauseDownload() {
@@ -123,7 +121,7 @@ public class DownloadInfo {
         }
         if (downloadConfig != null) {
             DownloadHelper.deleteFile(downloadConfig.getTempSaveFile());
-            DownloadHelper.get().clearRecordByFlag(downloadConfig.getSaveFile().getAbsolutePath());
+            DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(),downloadConfig.getUnionId());
         }
         setStatus(STATUS_ERROR);
         DownloadHelper.get().getHandler().post(new Runnable() {
@@ -186,7 +184,6 @@ public class DownloadInfo {
             return;
         }
         this.totalSize = totalSize;
-        downloadProgress.set(0);
         setStatus(STATUS_CONNECT);
         DownloadHelper.get().getHandler().post(new Runnable() {
             @Override
@@ -209,18 +206,17 @@ public class DownloadInfo {
     private void progress(final long downloadSize) {
         // TODO: 2021/2/24 按照规则将内存数据保存到本地
 //        saveDownloadCacheInfo(downloadRecord);
-        long progress = downloadProgress.addAndGet(downloadSize);
         //计算网速
         if (downloadConfig.isNeedSpeed()) {
             long nowTime = System.currentTimeMillis();
             if (preTime <= 0) {
-                tempDownloadSize = 0;
+                tempDownloadSize = downloadSize;
                 preTime = nowTime;
             }
             long timeInterval = nowTime - preTime;
             if (timeInterval >= tempTimeInterval) {
                 tempTimeInterval = 1000;
-                final float speedBySecond = (downloadSize-tempDownloadSize) * 1000f / timeInterval;
+                final float speedBySecond = (downloadSize - tempDownloadSize) * 1000f / timeInterval;
                 preTime = nowTime;
                 tempDownloadSize = downloadSize;
                 DownloadHelper.get().getHandler().post(new Runnable() {
@@ -229,8 +225,6 @@ public class DownloadInfo {
                         getDownloadListener().onSpeed(Float.parseFloat(String.format("%.1f", speedBySecond)));
                     }
                 });
-            } else {
-                tempDownloadSize = downloadSize;
             }
         }
         DownloadHelper.get().getHandler().post(new Runnable() {
@@ -250,11 +244,9 @@ public class DownloadInfo {
         if (downloadConfig == null) {
             getDownloadListener().onError();
         }
-        if (getStatus() == STATUS_CONNECT) {
+        if (getStatus() == STATUS_CONNECT||getStatus() == STATUS_PROGRESS) {
             return;
         }
-        /*需要判断是否存在下载的任务*/
-        // TODO: 2021/2/20
         DownloadHelper.get().getExecutorService().execute(new Runnable() {
             @Override
             public void run() {
@@ -262,8 +254,36 @@ public class DownloadInfo {
             }
         });
     }
-
+    /*如果存在相同的下载任务，需要询问是否重复下载，而且需要变更文件下载路径和unionId*/
+    private void repeatDownloadAndReUnionId(DownloadConfig downloadConfig,int num ){
+        DownloadRecord record = DownloadHelper.get().getRecord(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
+        if(record!=null&&record.getFileSize()>0){
+            if(num==1){
+                /*只需要询问一次是否重复下载*/
+                boolean flag = downloadListener.onRepeatDownload();
+                if(flag){
+                    /*如果存在相同的下载任务，则重复下载*/
+                    downloadConfig.setSaveFile(DownloadHelper.reDownloadAndRename(downloadConfig.getSaveFile(), num));
+                    downloadConfig.setUnionId(downloadConfig.getSaveFile().getAbsoluteFile().hashCode()+"");
+                    repeatDownloadAndReUnionId(downloadConfig,num+1);
+                }else{
+                    return;
+                }
+            }else{
+                downloadConfig.setSaveFile(DownloadHelper.reDownloadAndRename(downloadConfig.getSaveFile(), num));
+                downloadConfig.setUnionId(downloadConfig.getSaveFile().getAbsoluteFile().hashCode()+"");
+                repeatDownloadAndReUnionId(downloadConfig,num+1);
+            }
+        }else{
+            return;
+        }
+    }
     private void downloadByChildThread() {
+        if(getStatus()==0){
+            /*开始下载时，需要判断是否存在其他相同的下载任务*/
+            repeatDownloadAndReUnionId(downloadConfig,1);
+        }
+
         String fileUrl = downloadConfig.getFileDownloadUrl();
         if (TextUtils.isEmpty(fileUrl)) {
             DownloadHelper.get().getHandler().post(new Runnable() {
@@ -293,14 +313,14 @@ public class DownloadInfo {
 
         /*先判断内存是否存在数据，不存在再读取本地缓存配置*/
         if (DownloadRecord.isEmpty(downloadRecord)) {
-            downloadRecord = DownloadHelper.get().getRecord(getDownloadConfig().getUnionId());
+            downloadRecord = DownloadHelper.get().getRecord(downloadConfig.getDownloadSPName(),getDownloadConfig().getUnionId());
         }
         /*如果没有下载记录，那么需要删除之前已经下载的临时文件*/
         long startPoint = 0;
         /*或者如果需要重新下载，忽略之前的下载进度*/
         if (DownloadRecord.isEmpty(downloadRecord) || (downloadConfig != null && downloadConfig.isReDownload())) {
             DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
-            DownloadHelper.get().clearRecordByUnionId(downloadConfig.getUnionId());
+            DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(),downloadConfig.getUnionId());
             downloadRecord = null;
 
             startPoint = 0;
@@ -313,7 +333,7 @@ public class DownloadInfo {
         /*如果本地有下载记录，但是下载一部分的本地文件已经不存在了*/
         if (startPoint > 0) {
             if (downloadConfig.getTempSaveFile() != null && !downloadConfig.getTempSaveFile().exists()) {
-                DownloadHelper.get().clearRecordByUnionId(downloadConfig.getUnionId());
+                DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(),downloadConfig.getUnionId());
                 downloadRecord = null;
                 startPoint = 0;
             }
@@ -332,7 +352,7 @@ public class DownloadInfo {
             httpURLConnection.setRequestProperty("Range", "bytes=" + startPoint + "-");
             httpURLConnection.connect();
             int responseCode = httpURLConnection.getResponseCode();
-            long contentLength = getContentLength(httpURLConnection)+startPoint;
+            long contentLength = getContentLength(httpURLConnection) + startPoint;
             Log.i("=====", "====contentLength=" + contentLength);
             connect(contentLength);
             if (contentLength <= 0) {
@@ -402,7 +422,7 @@ public class DownloadInfo {
         if (downloadRecord == null) {
             return;
         }
-        DownloadHelper.get().saveRecord(downloadRecord);
+        DownloadHelper.get().saveRecord(downloadConfig.getDownloadSPName(),downloadRecord);
     }
 
     public String getFileDownloadUrl() {
