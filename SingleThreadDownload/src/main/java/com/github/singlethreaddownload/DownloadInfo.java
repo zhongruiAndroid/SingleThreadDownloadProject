@@ -212,7 +212,6 @@ public class DownloadInfo {
     }
 
     private void progress(final long downloadSize) {
-        // TODO: 2021/2/24 按照规则将内存数据保存到本地
 //        saveDownloadCacheInfo(downloadRecord);
         //计算网速
         if (downloadConfig.isNeedSpeed()) {
@@ -338,7 +337,6 @@ public class DownloadInfo {
             httpURLConnection.connect();
             int responseCode = httpURLConnection.getResponseCode();
             long contentLength = getContentLength(httpURLConnection) + startPoint;
-            Log.i("=====", "====contentLength=" + contentLength);
             connect(contentLength);
             if (contentLength <= 0) {
                 error();
@@ -379,7 +377,7 @@ public class DownloadInfo {
                 downloadRecord.addDownloadLength(len);
                 randomAccessFile.write(buff, 0, len);
                 progress(downloadRecord.getDownloadLength());
-                Log.i("=====", "====progress=" + downloadRecord.getDownloadLength());
+//                Log.i("=====", "====progress=" + downloadRecord.getDownloadLength());
                 if (getStatus() == STATUS_PAUSE || getStatus() == STATUS_DELETE) {
                     /*手动暂停时把内存的缓存信息保存至本地，防止暂停时保存信息之后，在return之前又写入了数据*/
                     saveDownloadCacheInfo(downloadRecord);
