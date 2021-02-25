@@ -77,7 +77,7 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
         long time2=System.currentTimeMillis();
         Log.i("=====","====time2="+(time2-time)/1000f);
 
-        FileDownloadManager.init(this);
+        FileDownloadManager.init(getApplication());
 
 
         initView();
@@ -183,7 +183,7 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
             case R.id.btDelete:
                 if (downloadInfo != null) {
                     tvResult.setText("删除下载文件");
-                    downloadInfo.deleteDownload();
+                    downloadInfo.deleteDownload(true);
                 }
                 break;
             case R.id.bt:
@@ -244,6 +244,11 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
             return;
         }
         downloadInfo = FileDownloadManager.download(config.build(), new FileDownloadListener() {
+            @Override
+            public boolean onRepeatDownload() {
+                return false;
+            }
+
             @Override
             public void onConnect(long totalSize) {
                 tvFileSize.setText("文件大小:"+(totalSize*1f/1014/1014)+"mb");

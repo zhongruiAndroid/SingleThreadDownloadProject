@@ -1,7 +1,9 @@
 package com.github.singlethreaddownload;
 
+import android.app.Application;
 import android.content.Context;
 
+import com.github.singlethreaddownload.helper.AppStateUtils;
 import com.github.singlethreaddownload.listener.FileDownloadListener;
 
 
@@ -15,8 +17,12 @@ public class FileDownloadManager {
         return context;
     }
 
-    public static void init(Context ctx) {
-        context = ctx.getApplicationContext();
+    public static void init(Application application) {
+        if(context!=null){
+            return;
+        }
+        context = application.getApplicationContext();
+        AppStateUtils.register(application);
     }
 
     public static DownloadInfo download(DownloadConfig config, FileDownloadListener listener) {

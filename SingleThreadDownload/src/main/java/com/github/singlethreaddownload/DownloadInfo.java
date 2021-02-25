@@ -3,6 +3,7 @@ package com.github.singlethreaddownload;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.github.singlethreaddownload.helper.AppStateUtils;
 import com.github.singlethreaddownload.helper.DownloadHelper;
 import com.github.singlethreaddownload.helper.DownloadRecord;
 import com.github.singlethreaddownload.listener.FileDownloadListener;
@@ -20,8 +21,6 @@ public class DownloadInfo {
     private volatile DownloadRecord downloadRecord;
     /*下载文件的总大小*/
     private long totalSize;
-    /*已下载的缓存大小，这个大小是从缓存记录读取，不是从缓存文件*/
-    private long localCacheSize;
 
 
     public static final int STATUS_ERROR = 1;
@@ -30,6 +29,7 @@ public class DownloadInfo {
     public static final int STATUS_DELETE = 4;
     public static final int STATUS_PROGRESS = 5;
     public static final int STATUS_CONNECT = 6;
+    public static final int STATUS_REQUEST = 7;
 
 
     private int status;
@@ -38,6 +38,12 @@ public class DownloadInfo {
         this.downloadConfig = config;
         this.downloadListener = listener;
         status = 0;
+        AppStateUtils.get().addAppStateChangeListener(this, new AppStateUtils.AppStateChangeListener() {
+            @Override
+            public void onStateChange(boolean intoFront) {
+                notifySaveRecord();
+            }
+        });
     }
 
     public FileDownloadListener getDownloadListener() {
@@ -48,7 +54,7 @@ public class DownloadInfo {
                     return false;
                 }
                 @Override
-                public void onConnect(long totalSize) {
+                public void onConnect(long totalSize,DownloadConfig config) {
 
                 }
 
@@ -98,6 +104,9 @@ public class DownloadInfo {
         changeStatus(STATUS_PAUSE);
     }
 
+    public void deleteDownload( ) {
+        deleteDownload(false);
+    }
     public void deleteDownload(boolean deleteTaskAndFile) {
         int status = getStatus();
         if (status == STATUS_DELETE) {
@@ -204,7 +213,7 @@ public class DownloadInfo {
         DownloadHelper.get().getHandler().post(new Runnable() {
             @Override
             public void run() {
-                getDownloadListener().onConnect(totalSize);
+                getDownloadListener().onConnect(totalSize,getDownloadConfig());
             }
         });
     }
@@ -216,7 +225,6 @@ public class DownloadInfo {
     private void reset() {
         preTime = 0;
         tempDownloadSize = 0;
-        localCacheSize = 0;
     }
 
     private void progress(final long downloadSize) {
@@ -266,7 +274,7 @@ public class DownloadInfo {
             getDownloadListener().onError();
             return;
         }
-        if (getStatus() == STATUS_CONNECT||getStatus() == STATUS_PROGRESS) {
+        if (getStatus() == STATUS_CONNECT||getStatus() == STATUS_PROGRESS||getStatus() == STATUS_REQUEST) {
             return;
         }
         DownloadHelper.get().getExecutorService().execute(new Runnable() {
@@ -276,38 +284,28 @@ public class DownloadInfo {
             }
         });
     }
-    /*如果存在相同的下载任务，需要询问是否重复下载，而且需要变更文件下载路径和unionId*/
-    private void repeatDownloadAndReUnionId(DownloadConfig downloadConfig,int num ){
-        DownloadRecord record = DownloadHelper.get().getRecord(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
-        if(record!=null&&record.getFileSize()>0){
-            if(num==1){
-                /*只需要询问一次是否重复下载*/
-                boolean flag = downloadListener.onRepeatDownload();
-                if(flag){
-                    /*如果存在相同的下载任务，则重复下载*/
-                    downloadConfig.setSaveFile(DownloadHelper.reDownloadAndRename(downloadConfig.getSaveFile(), num));
-                    downloadConfig.setUnionId(downloadConfig.getSaveFile().getAbsoluteFile().hashCode()+"");
-                    repeatDownloadAndReUnionId(downloadConfig,num+1);
-                }else{
-                    return;
-                }
-            }else{
-                downloadConfig.setSaveFile(DownloadHelper.reDownloadAndRename(downloadConfig.getSaveFile(), num));
-                downloadConfig.setUnionId(downloadConfig.getSaveFile().getAbsoluteFile().hashCode()+"");
-                repeatDownloadAndReUnionId(downloadConfig,num+1);
-            }
-        }else{
-            return;
-        }
-    }
+
     private void downloadByChildThread() {
         if(getStatus()==0){
             /*开始下载时，需要判断是否存在其他相同的下载任务*/
-            repeatDownloadAndReUnionId(downloadConfig,1);
+            boolean flag = downloadListener.onRepeatDownload();
+            if(flag){
+                /*如果存在相同的下载任务，则重复下载*/
+                downloadConfig.setSaveFile(DownloadHelper.reDownloadAndRename(downloadConfig.getSaveFile(),1));
+                downloadConfig.setUnionId(downloadConfig.getSaveFile().getAbsoluteFile().hashCode()+"");
+
+                /*防止存在下载记录，不存在已下载文件*/
+                DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(),downloadConfig.getUnionId());
+            }else{
+                return;
+            }
         }
         reset();
         /*下载完成后需要保存的文件*/
         File saveFile = downloadConfig.getSaveFile();
+        if(!saveFile.getParentFile().exists()){
+            saveFile.getParentFile().mkdirs();
+        }
         /*如果存在已下载完成的文件*/
         if (saveFile != null && saveFile.exists() && saveFile.isFile()) {
             if (downloadConfig.isIfExistAgainDownload()) {
@@ -322,7 +320,7 @@ public class DownloadInfo {
             }
         }
 
-        /*先判断内存是否存在数据，不存在再读取本地缓存配置*/
+        /*先判断内存是否存在数据，不存在再读取本地缓存配置,用于[下载-暂停-再下载]流程*/
         if (DownloadRecord.isEmpty(downloadRecord)) {
             downloadRecord = DownloadHelper.get().getRecord(downloadConfig.getDownloadSPName(),getDownloadConfig().getUnionId());
         }
@@ -356,6 +354,7 @@ public class DownloadInfo {
         BufferedInputStream bis = null;
         RandomAccessFile randomAccessFile = null;
         try {
+            setStatus(STATUS_REQUEST);
             URL url = new URL(downloadConfig.getFileDownloadUrl());
             httpURLConnection = (HttpURLConnection) url.openConnection();
             httpURLConnection.setConnectTimeout(30000);
