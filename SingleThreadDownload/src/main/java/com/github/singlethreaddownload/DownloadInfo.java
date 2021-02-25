@@ -57,7 +57,7 @@ public class DownloadInfo {
         if (downloadListener == null) {
             downloadListener = new FileDownloadListener() {
                 @Override
-                public void onConnect(long totalSize, DownloadConfig config) {
+                public void onConnect(long totalSize ) {
 
                 }
 
@@ -197,7 +197,7 @@ public class DownloadInfo {
         DownloadHelper.get().getHandler().post(new Runnable() {
             @Override
             public void run() {
-                getDownloadListener().onConnect(totalSize, getDownloadConfig());
+                getDownloadListener().onConnect(totalSize );
             }
         });
     }

@@ -247,7 +247,7 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
 
 
             @Override
-            public void onConnect(long totalSize, DownloadConfig config) {
+            public void onConnect(long totalSize ) {
                 tvFileSize.setText("文件大小:"+(totalSize*1f/1014/1014)+"mb");
                 pbProgress.setMax((int) totalSize);
                 tvResult.setText("连接中");

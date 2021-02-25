@@ -91,18 +91,14 @@ public class TestActivity extends AppCompatActivity implements View.OnClickListe
         if (cb.isChecked() && download != null) {
             DownloadHelper.deleteFile(download.getDownloadConfig().getSaveFile());
         }
-       /* if(download!=null){
-            download.download();
-            return;
-        }*/
-        /*默认开启2个线程下载*/
+
         DownloadConfig.Builder config = new DownloadConfig.Builder();
         config.setFileDownloadUrl(nbyUrl).setIfExistAgainDownload(cb.isChecked()).setNeedSpeed(true);
         /*如果不需要显示下载速度，FileDownloadManager.download直接传入下载地址即可*/
         startTime = System.currentTimeMillis();
         download = FileDownloadManager.download(config.build(), new FileDownloadListener() {
             @Override
-            public void onConnect(long totalSize, DownloadConfig config) {
+            public void onConnect(long totalSize ) {
                 tvResult.setText("连接中");
                 tvFileSize.setText("文件大小:" + (totalSize * 1f / 1014 / 1014) + "mb");
                 pbProgress.setMax((int) totalSize);
