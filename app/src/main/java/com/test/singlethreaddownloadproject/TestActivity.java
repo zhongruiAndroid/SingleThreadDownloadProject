@@ -1,6 +1,8 @@
 package com.test.singlethreaddownloadproject;
 
+import android.content.DialogInterface;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.AppCompatCheckBox;
 import android.util.Log;
@@ -65,6 +67,8 @@ public class TestActivity extends AppCompatActivity implements View.OnClickListe
         if (!DownloadRecord.isEmpty(record)) {
             pbProgress.setMax((int) record.getFileSize());
             pbProgress.setProgress((int) record.getDownloadLength());
+
+            tvProgress.setText(record.getDownloadLength() + "/" + record.getFileSize());
         }
     }
 
@@ -96,7 +100,38 @@ public class TestActivity extends AppCompatActivity implements View.OnClickListe
         config.setFileDownloadUrl(nbyUrl).setIfExistAgainDownload(cb.isChecked()).setNeedSpeed(true);
         /*如果不需要显示下载速度，FileDownloadManager.download直接传入下载地址即可*/
         startTime = System.currentTimeMillis();
-        download = FileDownloadManager.download(config.build(), new FileDownloadListener() {
+        final DownloadConfig build = config.build();
+        final DownloadConfig downloadConfig = DownloadHelper.checkHasDownloadRecord(build);
+        if(downloadConfig!=null){
+            AlertDialog.Builder builder=new AlertDialog.Builder(this);
+            builder.setMessage("已经存在相同的下载任务,是否继续下载?");
+            builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                    startDownload(downloadConfig);
+                }
+            });
+            builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            });
+            builder.setNeutralButton("继续下载", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    startDownload(build);
+                }
+            });
+            builder.show();
+        }else{
+            startDownload(build);
+        }
+    }
+
+    private void startDownload(DownloadConfig downloadConfig) {
+        download = FileDownloadManager.download(downloadConfig, new FileDownloadListener() {
             @Override
             public void onConnect(long totalSize ) {
                 tvResult.setText("连接中");

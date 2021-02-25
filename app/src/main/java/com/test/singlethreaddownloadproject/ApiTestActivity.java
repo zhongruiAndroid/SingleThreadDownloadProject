@@ -26,6 +26,7 @@ import com.github.singlethreaddownload.DownloadConfig;
 import com.github.singlethreaddownload.DownloadInfo;
 import com.github.singlethreaddownload.FileDownloadManager;
 import com.github.singlethreaddownload.helper.DownloadHelper;
+import com.github.singlethreaddownload.helper.DownloadRecord;
 import com.github.singlethreaddownload.listener.FileDownloadListener;
 
 import java.io.File;
@@ -72,10 +73,10 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
         setContentView(R.layout.activity_api_test);
 
         String hwUrl = "https://imtt.dd.qq.com/16891/apk/0F9A4978BE0E05EFBBBAEF535150EEA9.apk?fsname=com.vmall.client_1.9.3.310_10903310.apk&csr=1bbd";
-        long time=System.currentTimeMillis();
+        long time = System.currentTimeMillis();
         String s = hwUrl.hashCode() + "";
-        long time2=System.currentTimeMillis();
-        Log.i("=====","====time2="+(time2-time)/1000f);
+        long time2 = System.currentTimeMillis();
+        Log.i("=====", "====time2=" + (time2 - time) / 1000f);
 
         FileDownloadManager.init(getApplication());
 
@@ -91,14 +92,14 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
             copy(this, preDownloadUrl);
             etUrl.setText(preDownloadUrl);
             //获取之前下载任务的下载进度以及文件大小
-            Pair<Long, Long> progressByUrl = DownloadHelper.get().getProgressByUnionId(preDownloadUrl.hashCode()+"");
-            Long second = progressByUrl.second;
+            DownloadRecord record = DownloadHelper.get().getRecord(preDownloadUrl.hashCode() + "");
+            Long second = record.getFileSize();
             pbProgress.setMax(Integer.valueOf(second + ""));
-            pbProgress.setProgress(Integer.valueOf(progressByUrl.first + ""));
+            pbProgress.setProgress(Integer.valueOf(record.getDownloadLength() + ""));
 
-            tvFileSize.setText("文件大小:"+(second*1f/1014/1014)+"mb");
+            tvFileSize.setText("文件大小:" + (second * 1f / 1014 / 1014) + "mb");
 
-            tvProgress.setText(progressByUrl.first + "/" + second);
+            tvProgress.setText(record.getDownloadLength() + "/" + second);
 
             bt.setText("继续上次下载");
 
@@ -156,7 +157,7 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
         sbThreadNum.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvThreadNum.setText("线程数量："+progress);
+                tvThreadNum.setText("线程数量：" + progress);
             }
 
             @Override
@@ -206,6 +207,7 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
                 break;
         }
     }
+
     private void copyUrl(String url) {
         if (etUrl == null) {
             return;
@@ -247,11 +249,11 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
 
 
             @Override
-            public void onConnect(long totalSize ) {
-                tvFileSize.setText("文件大小:"+(totalSize*1f/1014/1014)+"mb");
+            public void onConnect(long totalSize) {
+                tvFileSize.setText("文件大小:" + (totalSize * 1f / 1014 / 1014) + "mb");
                 pbProgress.setMax((int) totalSize);
                 tvResult.setText("连接中");
-                downloadTime=System.currentTimeMillis();
+                downloadTime = System.currentTimeMillis();
             }
 
             @Override
@@ -269,7 +271,7 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
             @Override
             public void onSuccess(File file) {
                 long timeInterval = System.currentTimeMillis() - downloadTime;
-                tvResult.setText("下载完成：(耗时"+timeInterval*1f/1000+"s)" + file.getAbsolutePath());
+                tvResult.setText("下载完成：(耗时" + timeInterval * 1f / 1000 + "s)" + file.getAbsolutePath());
             }
 
             @Override

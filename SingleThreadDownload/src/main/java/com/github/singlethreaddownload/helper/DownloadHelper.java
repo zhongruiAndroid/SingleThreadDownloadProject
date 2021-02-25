@@ -170,13 +170,7 @@ public class DownloadHelper {
         return externalCacheDir.getFreeSpace() > downloadSize;
     }
 
-    public Pair<Long, Long> getProgressByUnionId(String unionId) {
-        DownloadRecord record = getRecord(unionId);
-        if (record == null || record.getFileSize() <= 0) {
-            return new Pair(new Long(0), new Long(0));
-        }
-        return new Pair(new Long(record.getDownloadLength()), new Long(record.getFileSize()));
-    }
+
 
     /*重新下载时重命名*/
     public static File reDownloadAndRename(File saveFile, int reNum) {
@@ -202,9 +196,10 @@ public class DownloadHelper {
                 num = num + 1;
                 record = DownloadHelper.get().getRecord(config.getDownloadSPName(), newFile.getAbsolutePath().hashCode() + "");
             }
-            config.setSaveFile(newFile);
-            config.setUnionId(newFile.getAbsolutePath().hashCode()+"");
-            return config;
+            DownloadConfig newConfig = config.copy();
+            newConfig.setSaveFile(newFile);
+            newConfig.setUnionId(newFile.getAbsolutePath().hashCode()+"");
+            return newConfig;
         } else {
             return null;
         }

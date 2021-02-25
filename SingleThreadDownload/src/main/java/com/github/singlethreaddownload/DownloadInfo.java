@@ -307,7 +307,9 @@ public class DownloadInfo {
 
             startPoint = 0;
         } else {
-            startPoint = downloadRecord.getDownloadLength() - 1;
+            downloadRecord.setDownloadLength(downloadRecord.getDownloadLength()-1);
+            /*因为断点下载的起始位置减一，相应的已经下载的长度也要减一*/
+            startPoint = downloadRecord.getDownloadLength();
             if (startPoint < 0) {
                 startPoint = 0;
             }
@@ -379,8 +381,11 @@ public class DownloadInfo {
                 progress(downloadRecord.getDownloadLength());
                 Log.i("=====", "====progress=" + downloadRecord.getDownloadLength());
                 if (getStatus() == STATUS_PAUSE || getStatus() == STATUS_DELETE) {
+                    /*手动暂停时把内存的缓存信息保存至本地，防止暂停时保存信息之后，在return之前又写入了数据*/
+                    saveDownloadCacheInfo(downloadRecord);
                     return;
                 }
+
             }
         } catch (Exception e) {
             saveDownloadCacheInfo(downloadRecord);

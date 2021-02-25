@@ -105,6 +105,10 @@ public class DownloadRecord implements Serializable {
 
             downloadRecord = new DownloadRecord(fileSize, uniqueId);
             downloadRecord.fileSize=fileSize;
+            if(downloadLength>0){
+                /*因为断点下载的起始位置减一，相应的已经下载的长度也要减一*/
+                downloadLength=downloadLength-1;
+            }
             downloadRecord.downloadLength=downloadLength;
             downloadRecord.downloadUrl=downloadUrl;
             downloadRecord.saveFilePath=saveFilePath;

@@ -243,4 +243,23 @@ public class DownloadConfig implements Serializable {
     public String getDownloadSPName() {
         return downloadSPName;
     }
+
+    public DownloadConfig copy() {
+        Builder builder = new Builder();
+        builder.setFileDownloadUrl(this.fileDownloadUrl);
+
+        DownloadConfig build = builder.build();
+
+        build.unionId = this.unionId;
+        build.saveFile = this.saveFile;
+        build.tempSaveFile = this.tempSaveFile;
+        build.reDownload = this.reDownload;
+        build.ifExistAgainDownload = this.ifExistAgainDownload;
+        build.fileDownloadUrl = this.fileDownloadUrl;
+        build.useSourceName = this.useSourceName;
+        build.needSpeed = this.needSpeed;
+        build.downloadBufferSize = this.downloadBufferSize;
+        build.downloadSPName = this.downloadSPName;
+        return build;
+    }
 }
