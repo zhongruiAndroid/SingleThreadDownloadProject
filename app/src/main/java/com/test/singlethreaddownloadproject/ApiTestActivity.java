@@ -244,13 +244,10 @@ public class ApiTestActivity extends AppCompatActivity implements View.OnClickLi
             return;
         }
         downloadInfo = FileDownloadManager.download(config.build(), new FileDownloadListener() {
-            @Override
-            public boolean onRepeatDownload() {
-                return false;
-            }
+
 
             @Override
-            public void onConnect(long totalSize) {
+            public void onConnect(long totalSize, DownloadConfig config) {
                 tvFileSize.setText("文件大小:"+(totalSize*1f/1014/1014)+"mb");
                 pbProgress.setMax((int) totalSize);
                 tvResult.setText("连接中");

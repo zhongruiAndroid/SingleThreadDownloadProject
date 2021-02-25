@@ -3,7 +3,6 @@ package com.github.singlethreaddownload;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.github.singlethreaddownload.helper.AppStateUtils;
 import com.github.singlethreaddownload.helper.DownloadHelper;
 import com.github.singlethreaddownload.helper.DownloadRecord;
 import com.github.singlethreaddownload.listener.FileDownloadListener;
@@ -33,28 +32,32 @@ public class DownloadInfo {
 
 
     private int status;
+    private AppStateUtils.AppStateChangeListener appStateChangeListener = new AppStateUtils.AppStateChangeListener() {
+        @Override
+        public void onStateChange(boolean intoFront) {
+            notifySaveRecord();
+        }
+    };
+
+    private void setAppStateChangeListener() {
+        AppStateUtils.get().addAppStateChangeListener(this, appStateChangeListener);
+    }
+
+    private void removeAppStateChangeListener() {
+        AppStateUtils.get().removeAppStateChangeListener(this);
+    }
 
     public DownloadInfo(DownloadConfig config, FileDownloadListener listener) {
         this.downloadConfig = config;
         this.downloadListener = listener;
         status = 0;
-        AppStateUtils.get().addAppStateChangeListener(this, new AppStateUtils.AppStateChangeListener() {
-            @Override
-            public void onStateChange(boolean intoFront) {
-                notifySaveRecord();
-            }
-        });
     }
 
     public FileDownloadListener getDownloadListener() {
         if (downloadListener == null) {
             downloadListener = new FileDownloadListener() {
                 @Override
-                public boolean onRepeatDownload() {
-                    return false;
-                }
-                @Override
-                public void onConnect(long totalSize,DownloadConfig config) {
+                public void onConnect(long totalSize, DownloadConfig config) {
 
                 }
 
@@ -93,7 +96,15 @@ public class DownloadInfo {
     }
 
     private void setStatus(int status) {
-        this.status=status;
+        this.status = status;
+        switch (status) {
+            case STATUS_ERROR:
+            case STATUS_SUCCESS:
+            case STATUS_PAUSE:
+            case STATUS_DELETE:
+                removeAppStateChangeListener();
+                break;
+        }
     }
 
     public int getStatus() {
@@ -101,67 +112,8 @@ public class DownloadInfo {
     }
 
     public void pauseDownload() {
-        changeStatus(STATUS_PAUSE);
-    }
-
-    public void deleteDownload( ) {
-        deleteDownload(false);
-    }
-    public void deleteDownload(boolean deleteTaskAndFile) {
         int status = getStatus();
-        if (status == STATUS_DELETE) {
-            return;
-        }
-        setStatus(STATUS_DELETE);
-        if(deleteTaskAndFile){
-            DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
-            DownloadHelper.deleteFile(getDownloadConfig().getSaveFile());
-        }else{
-            /*如果不删除源文件，继续保留下载记录*/
-            saveDownloadCacheInfo(downloadRecord);
-        }
-        DownloadHelper.get().getHandler().post(new Runnable() {
-            @Override
-            public void run() {
-                getDownloadListener().onDelete();
-            }
-        });
-
-    }
-
-    private void changeStatus(int changeStatus) {
-        if (getStatus() == STATUS_SUCCESS) {
-            return;
-        }
-        switch (changeStatus) {
-            case STATUS_PAUSE:
-                pause();
-                break;
-        }
-
-    }
-
-    private void error() {
-        int status = getStatus();
-        if (status == STATUS_ERROR) {
-            return;
-        }
-        if (downloadConfig != null) {
-            DownloadHelper.deleteFile(downloadConfig.getTempSaveFile());
-            DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(),downloadConfig.getUnionId());
-        }
-        setStatus(STATUS_ERROR);
-        DownloadHelper.get().getHandler().post(new Runnable() {
-            @Override
-            public void run() {
-                getDownloadListener().onError();
-            }
-        });
-    }
-
-    private void pause() {
-        int status = getStatus();
-        if (status == STATUS_PAUSE) {
+        if (status == STATUS_PAUSE || status == STATUS_SUCCESS) {
             return;
         }
         setStatus(STATUS_PAUSE);
@@ -175,19 +127,51 @@ public class DownloadInfo {
         });
     }
 
-    private void delete() {
+    public void deleteDownload() {
+        deleteDownload(false);
+    }
+
+    public void deleteDownload(boolean deleteTaskAndFile) {
         int status = getStatus();
         if (status == STATUS_DELETE) {
             return;
         }
         setStatus(STATUS_DELETE);
+        if (deleteTaskAndFile) {
+            DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
+            DownloadHelper.deleteFile(getDownloadConfig().getSaveFile());
+        } else {
+            /*如果不删除源文件，继续保留下载记录*/
+            saveDownloadCacheInfo(downloadRecord);
+        }
         DownloadHelper.get().getHandler().post(new Runnable() {
             @Override
             public void run() {
                 getDownloadListener().onDelete();
             }
         });
+
     }
+
+
+    private void error() {
+        int status = getStatus();
+        if (status == STATUS_ERROR) {
+            return;
+        }
+        if (downloadConfig != null) {
+            DownloadHelper.deleteFile(downloadConfig.getTempSaveFile());
+            DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
+        }
+        setStatus(STATUS_ERROR);
+        DownloadHelper.get().getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                getDownloadListener().onError();
+            }
+        });
+    }
+
 
     private void success(final File file) {
         int status = getStatus();
@@ -213,7 +197,7 @@ public class DownloadInfo {
         DownloadHelper.get().getHandler().post(new Runnable() {
             @Override
             public void run() {
-                getDownloadListener().onConnect(totalSize,getDownloadConfig());
+                getDownloadListener().onConnect(totalSize, getDownloadConfig());
             }
         });
     }
@@ -274,7 +258,7 @@ public class DownloadInfo {
             getDownloadListener().onError();
             return;
         }
-        if (getStatus() == STATUS_CONNECT||getStatus() == STATUS_PROGRESS||getStatus() == STATUS_REQUEST) {
+        if (getStatus() == STATUS_CONNECT || getStatus() == STATUS_PROGRESS || getStatus() == STATUS_REQUEST) {
             return;
         }
         DownloadHelper.get().getExecutorService().execute(new Runnable() {
@@ -286,30 +270,19 @@ public class DownloadInfo {
     }
 
     private void downloadByChildThread() {
-        if(getStatus()==0){
-            /*开始下载时，需要判断是否存在其他相同的下载任务*/
-            boolean flag = downloadListener.onRepeatDownload();
-            if(flag){
-                /*如果存在相同的下载任务，则重复下载*/
-                downloadConfig.setSaveFile(DownloadHelper.reDownloadAndRename(downloadConfig.getSaveFile(),1));
-                downloadConfig.setUnionId(downloadConfig.getSaveFile().getAbsoluteFile().hashCode()+"");
+        setAppStateChangeListener();
 
-                /*防止存在下载记录，不存在已下载文件*/
-                DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(),downloadConfig.getUnionId());
-            }else{
-                return;
-            }
-        }
         reset();
         /*下载完成后需要保存的文件*/
         File saveFile = downloadConfig.getSaveFile();
-        if(!saveFile.getParentFile().exists()){
+        if (!saveFile.getParentFile().exists()) {
             saveFile.getParentFile().mkdirs();
         }
         /*如果存在已下载完成的文件*/
         if (saveFile != null && saveFile.exists() && saveFile.isFile()) {
             if (downloadConfig.isIfExistAgainDownload()) {
-                downloadConfig.setSaveFile(DownloadHelper.reDownloadAndRename(saveFile, 1));
+                DownloadHelper.deleteFile(saveFile);
+//                downloadConfig.setSaveFile(DownloadHelper.reDownloadAndRename(saveFile, 1));
             } else {
                 /*如果本地已存在下载的文件，直接返回*/
                 long length = saveFile.length();
@@ -322,14 +295,14 @@ public class DownloadInfo {
 
         /*先判断内存是否存在数据，不存在再读取本地缓存配置,用于[下载-暂停-再下载]流程*/
         if (DownloadRecord.isEmpty(downloadRecord)) {
-            downloadRecord = DownloadHelper.get().getRecord(downloadConfig.getDownloadSPName(),getDownloadConfig().getUnionId());
+            downloadRecord = DownloadHelper.get().getRecord(downloadConfig.getDownloadSPName(), getDownloadConfig().getUnionId());
         }
         /*如果没有下载记录，那么需要删除之前已经下载的临时文件*/
         long startPoint = 0;
         /*或者如果需要重新下载，忽略之前的下载进度*/
         if (DownloadRecord.isEmpty(downloadRecord) || (downloadConfig != null && downloadConfig.isReDownload())) {
             DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
-            DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(),downloadConfig.getUnionId());
+            DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
             downloadRecord = null;
 
             startPoint = 0;
@@ -342,7 +315,7 @@ public class DownloadInfo {
         /*如果本地有下载记录，但是下载一部分的本地文件已经不存在了*/
         if (startPoint > 0) {
             if (downloadConfig.getTempSaveFile() != null && !downloadConfig.getTempSaveFile().exists()) {
-                DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(),downloadConfig.getUnionId());
+                DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
                 downloadRecord = null;
                 startPoint = 0;
             }
@@ -405,11 +378,12 @@ public class DownloadInfo {
                 randomAccessFile.write(buff, 0, len);
                 progress(downloadRecord.getDownloadLength());
                 Log.i("=====", "====progress=" + downloadRecord.getDownloadLength());
-                if (getStatus() == STATUS_PAUSE||getStatus() == STATUS_DELETE) {
+                if (getStatus() == STATUS_PAUSE || getStatus() == STATUS_DELETE) {
                     return;
                 }
             }
         } catch (Exception e) {
+            saveDownloadCacheInfo(downloadRecord);
             e.printStackTrace();
             error();
         } finally {
@@ -426,14 +400,15 @@ public class DownloadInfo {
         success(downloadConfig.getSaveFile());
     }
 
-    /*边下载边保存当前下载进度*/
+    /*保存当前下载进度*/
     private void saveDownloadCacheInfo(DownloadRecord downloadRecord) {
         if (downloadRecord == null) {
             return;
         }
-        DownloadHelper.get().saveRecord(downloadConfig.getDownloadSPName(),downloadRecord);
+        DownloadHelper.get().saveRecord(downloadConfig.getDownloadSPName(), downloadRecord);
     }
-    public void notifySaveRecord(){
+
+    public void notifySaveRecord() {
         saveDownloadCacheInfo(downloadRecord);
     }
 

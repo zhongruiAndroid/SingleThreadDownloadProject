@@ -1,4 +1,4 @@
-package com.github.singlethreaddownload.helper;
+package com.github.singlethreaddownload;
 
 import android.app.Activity;
 import android.app.Application;
@@ -96,6 +96,8 @@ public class AppStateUtils {
                 if (topActivity == activity && topActivity.getClass().getName().equals(activity.getClass().getName())) {
                     topActivity = null;
                 }
+                /*只要有activity退出，也保存下载记录，为了保证当前下载页面退出及时保存下载记录*/
+                notifyStateChangeListener(false);
             }
         };
     }

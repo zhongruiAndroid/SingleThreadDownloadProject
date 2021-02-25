@@ -56,9 +56,9 @@ public class DownloadConfig implements Serializable {
             if (builder.useSourceName && !TextUtils.isEmpty(fileDownloadUrl)) {
                 int index = fileDownloadUrl.lastIndexOf("/");
                 String fileName = fileDownloadUrl.substring(index);
-                if(builder.saveFile.isFile()){
+                if (builder.saveFile.isFile()) {
                     builder.setSaveFile(new File(builder.saveFile.getParent(), fileName));
-                }else{
+                } else {
                     builder.setSaveFile(new File(builder.saveFile, fileName));
                 }
             }
@@ -71,7 +71,7 @@ public class DownloadConfig implements Serializable {
         this.fileDownloadUrl = builder.fileDownloadUrl;
         this.useSourceName = builder.useSourceName;
 
-        this.unionId=builder.unionId;
+        this.unionId = builder.unionId;
         this.needSpeed = builder.needSpeed;
         this.downloadBufferSize = builder.downloadBufferSize;
     }
@@ -120,7 +120,7 @@ public class DownloadConfig implements Serializable {
                 saveFile.getParentFile().mkdirs();
             }
             this.saveFile = saveFile;
-            this.tempSaveFile=createTempSaveFileBySaveFile(saveFile);
+            this.tempSaveFile = createTempSaveFileBySaveFile(saveFile);
             return this;
         }
 
@@ -136,8 +136,8 @@ public class DownloadConfig implements Serializable {
 
         public Builder setFileDownloadUrl(String fileDownloadUrl) {
             this.fileDownloadUrl = fileDownloadUrl;
-            if(TextUtils.isEmpty(unionId)&&!TextUtils.isEmpty(fileDownloadUrl)){
-                unionId=fileDownloadUrl.hashCode()+"";
+            if (TextUtils.isEmpty(unionId) && !TextUtils.isEmpty(fileDownloadUrl)) {
+                unionId = fileDownloadUrl.hashCode() + "";
             }
             return this;
         }
@@ -146,7 +146,6 @@ public class DownloadConfig implements Serializable {
             this.useSourceName = useSourceName;
             return this;
         }
-
 
 
         public Builder setNeedSpeed(boolean needSpeed) {
@@ -158,10 +157,12 @@ public class DownloadConfig implements Serializable {
             this.reDownload = reDownload;
             return this;
         }
+
+
         public void setUnionId(String unionId) {
             this.unionId = unionId;
-            if(TextUtils.isEmpty(unionId)&&!TextUtils.isEmpty(fileDownloadUrl)){
-                unionId=fileDownloadUrl.hashCode()+"";
+            if (TextUtils.isEmpty(unionId) && !TextUtils.isEmpty(fileDownloadUrl)) {
+                unionId = fileDownloadUrl.hashCode() + "";
             }
         }
 
@@ -185,14 +186,16 @@ public class DownloadConfig implements Serializable {
 
     public void setSaveFile(File saveFile) {
         this.saveFile = saveFile;
-        this.tempSaveFile=createTempSaveFileBySaveFile(saveFile);
+        this.tempSaveFile = createTempSaveFileBySaveFile(saveFile);
     }
+
     public static File createTempSaveFileBySaveFile(File saveFile) {
         String name = saveFile.getName();
         String substring = name.substring(0, name.lastIndexOf("."));
         File tempSaveFile = new File(saveFile.getParent(), substring + ".temp");
         return tempSaveFile;
     }
+
     public File getTempSaveFile() {
         return tempSaveFile;
     }
@@ -200,6 +203,7 @@ public class DownloadConfig implements Serializable {
     public boolean isReDownload() {
         return reDownload;
     }
+
 
     public boolean isIfExistAgainDownload() {
         return ifExistAgainDownload;
@@ -218,10 +222,9 @@ public class DownloadConfig implements Serializable {
     }
 
 
-
     public String getUnionId() {
-        if(TextUtils.isEmpty(unionId)&&!TextUtils.isEmpty(fileDownloadUrl)){
-            unionId=fileDownloadUrl.hashCode()+"";
+        if (TextUtils.isEmpty(unionId) && !TextUtils.isEmpty(fileDownloadUrl)) {
+            unionId = fileDownloadUrl.hashCode() + "";
         }
         return unionId;
     }
@@ -231,8 +234,8 @@ public class DownloadConfig implements Serializable {
     }
 
     public int getDownloadBufferSize() {
-        if(downloadBufferSize<20480){
-            downloadBufferSize=20480;
+        if (downloadBufferSize < 20480) {
+            downloadBufferSize = 20480;
         }
         return downloadBufferSize;
     }

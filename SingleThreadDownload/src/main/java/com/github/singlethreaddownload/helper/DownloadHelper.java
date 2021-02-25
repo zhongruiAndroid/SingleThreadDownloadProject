@@ -8,6 +8,7 @@ import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Pair;
 
+import com.github.singlethreaddownload.DownloadConfig;
 import com.github.singlethreaddownload.FileDownloadManager;
 
 import java.io.Closeable;
@@ -97,21 +98,23 @@ public class DownloadHelper {
         String downloadRecord = sp.getString(unionId, null);
         return DownloadRecord.fromJson(downloadRecord);
     }
-    public Map<String,DownloadRecord> getAllRecord( ) {
+
+    public Map<String, DownloadRecord> getAllRecord() {
         return getAllRecord(sp_file_name);
     }
-    public Map<String,DownloadRecord> getAllRecord(String spName) {
+
+    public Map<String, DownloadRecord> getAllRecord(String spName) {
         if (TextUtils.isEmpty(spName)) {
             spName = sp_file_name;
         }
         SharedPreferences sp = FileDownloadManager.getContext().getSharedPreferences(spName, Context.MODE_PRIVATE);
         Map<String, String> all = (Map<String, String>) sp.getAll();
-        Map<String,DownloadRecord> map=new HashMap();
-        if(all!=null){
-            for(Map.Entry<String, String> item:all.entrySet()){
+        Map<String, DownloadRecord> map = new HashMap();
+        if (all != null) {
+            for (Map.Entry<String, String> item : all.entrySet()) {
                 String key = item.getKey();
                 DownloadRecord downloadRecord = DownloadRecord.fromJson(item.getValue());
-                map.put(key,downloadRecord);
+                map.put(key, downloadRecord);
             }
         }
         return map;
@@ -136,10 +139,10 @@ public class DownloadHelper {
     }
 
     public void clearRecordByUnionId(String unionId) {
-        clearRecordByUnionId(sp_file_name,unionId);
+        clearRecordByUnionId(sp_file_name, unionId);
     }
 
-    public void clearRecordByUnionId(String spName,String unionId) {
+    public void clearRecordByUnionId(String spName, String unionId) {
         if (TextUtils.isEmpty(spName)) {
             spName = sp_file_name;
         }
@@ -185,6 +188,25 @@ public class DownloadHelper {
             return newFile;
         } else {
             return reDownloadAndRename(saveFile, reNum + 1);
+        }
+    }
+
+    /*如果返回的数据不为空，则表示本地有下载记录，表示有下载任务*/
+    public static DownloadConfig checkHasDownloadRecord(DownloadConfig config) {
+        DownloadRecord record = DownloadHelper.get().getRecord(config.getDownloadSPName(), config.getUnionId());
+        if (record != null && record.getFileSize() > 0) {
+            int num = 1;
+            File newFile = null;
+            while (record != null && record.getFileSize() > 0) {
+                newFile = DownloadHelper.reDownloadAndRename(config.getSaveFile(), num);
+                num = num + 1;
+                record = DownloadHelper.get().getRecord(config.getDownloadSPName(), newFile.getAbsolutePath().hashCode() + "");
+            }
+            config.setSaveFile(newFile);
+            config.setUnionId(newFile.getAbsolutePath().hashCode()+"");
+            return config;
+        } else {
+            return null;
         }
     }
 }

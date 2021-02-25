@@ -3,7 +3,6 @@ package com.github.singlethreaddownload;
 import android.app.Application;
 import android.content.Context;
 
-import com.github.singlethreaddownload.helper.AppStateUtils;
 import com.github.singlethreaddownload.listener.FileDownloadListener;
 
 

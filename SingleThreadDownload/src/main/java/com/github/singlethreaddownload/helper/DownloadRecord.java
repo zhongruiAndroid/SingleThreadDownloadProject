@@ -2,6 +2,8 @@ package com.github.singlethreaddownload.helper;
 
 import android.text.TextUtils;
 
+import com.github.singlethreaddownload.DownloadConfig;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -117,6 +119,7 @@ public class DownloadRecord implements Serializable {
     public static boolean isEmpty(DownloadRecord downloadRecord){
         return downloadRecord==null||downloadRecord.getFileSize()<=0;
     }
+
 
     public String toJson() {
         JSONObject jsonObject = new JSONObject();
