@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 获取应用状态工具类
  */
-public class AppStateUtils {
+class AppStateUtils {
     public interface AppStateChangeListener {
         void onStateChange(boolean intoFront);
     }
@@ -25,9 +25,6 @@ public class AppStateUtils {
     //刚刚进入application,但是还没进入activity或者activity某些生命周期没执行完成，那么状态还是属于前台
     private boolean firstIntoApp;
 
-
-    //是否记录最上层的activity
-    private Activity topActivity;
 
     private Application.ActivityLifecycleCallbacks activityLifecycleCallbacks;
 
@@ -65,7 +62,6 @@ public class AppStateUtils {
 
             @Override
             public void onActivityResumed(Activity activity) {
-                topActivity = activity;
             }
 
             @Override
@@ -90,12 +86,6 @@ public class AppStateUtils {
 
             @Override
             public void onActivityDestroyed(Activity activity) {
-                if (topActivity == null || activity == null) {
-                    return;
-                }
-                if (topActivity == activity && topActivity.getClass().getName().equals(activity.getClass().getName())) {
-                    topActivity = null;
-                }
                 /*只要有activity退出，也保存下载记录，为了保证当前下载页面退出及时保存下载记录*/
                 notifyStateChangeListener(false);
             }
@@ -145,9 +135,6 @@ public class AppStateUtils {
         return isFront() == false;
     }
 
-    public static Activity getTopActivity() {
-        return AppStateUtils.get().topActivity;
-    }
 
     public void addAppStateChangeListener(Object object, AppStateChangeListener appStateChangeListener) {
         if (appStateChangeListener == null) {
