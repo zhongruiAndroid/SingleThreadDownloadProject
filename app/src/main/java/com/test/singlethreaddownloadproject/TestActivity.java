@@ -72,7 +72,8 @@ public class TestActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    public static final String nbyUrl = "https://b4fc69b7b91b11258cf93c80ebe77d53.dd.cdntips.com/imtt.dd.qq.com/16891/apk/FBAF111EE8D5AE9810A79EFA794901AA.apk?mkey=5f0db2308ccf356e&f=9870&fsname=cn.nubia.nubiashop_1.6.3.1021_77.apk&csr=1bbd&cip=140.207.19.155&proto=https";
+    public static final String nbyUrl = "https://raw.githubusercontent.com/zhongruiAndroid/TestRxBus/master/aaaaa.apk";
+//    public static final String nbyUrl = "https://b4fc69b7b91b11258cf93c80ebe77d53.dd.cdntips.com/imtt.dd.qq.com/16891/apk/FBAF111EE8D5AE9810A79EFA794901AA.apk?mkey=5f0db2308ccf356e&f=9870&fsname=cn.nubia.nubiashop_1.6.3.1021_77.apk&csr=1bbd&cip=140.207.19.155&proto=https";
 
     @Override
     public void onClick(View v) {
@@ -100,6 +101,10 @@ public class TestActivity extends AppCompatActivity implements View.OnClickListe
         config.setFileDownloadUrl(nbyUrl).setIfExistAgainDownload(cb.isChecked()).setNeedSpeed(true);
         /*如果不需要显示下载速度，FileDownloadManager.download直接传入下载地址即可*/
         startTime = System.currentTimeMillis();
+        if(download!=null){
+            download.download();
+            return;
+        }
         final DownloadConfig build = config.build();
         final DownloadConfig downloadConfig = DownloadHelper.checkHasDownloadRecord(build);
         if(downloadConfig!=null){
@@ -137,6 +142,7 @@ public class TestActivity extends AppCompatActivity implements View.OnClickListe
                 tvResult.setText("连接中");
                 tvFileSize.setText("文件大小:" + (totalSize * 1f / 1014 / 1014) + "mb");
                 pbProgress.setMax((int) totalSize);
+                pbProgress.setProgress(0);
             }
 
             @Override

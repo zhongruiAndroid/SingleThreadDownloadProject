@@ -20,6 +20,8 @@ public class DownloadRecord implements Serializable {
     private String saveFilePath;
     /*下载任务的唯一标识*/
     private String uniqueId;
+    private String lastModified;
+    private String eTag;
 
     public static String createUIDByFilePath(String saveFilePath){
         if(TextUtils.isEmpty(saveFilePath)){
@@ -67,6 +69,22 @@ public class DownloadRecord implements Serializable {
         }
     }
 
+    public String getLastModified() {
+        return lastModified;
+    }
+
+    public void setLastModified(String lastModified) {
+        this.lastModified = lastModified;
+    }
+
+    public String geteTag() {
+        return eTag;
+    }
+
+    public void seteTag(String eTag) {
+        this.eTag = eTag;
+    }
+
     public long getDownloadLength() {
         return downloadLength;
     }
@@ -100,6 +118,8 @@ public class DownloadRecord implements Serializable {
             long fileSize = jsonObject.optLong("fileSize");
             long downloadLength = jsonObject.optLong("downloadLength");
             String downloadUrl = jsonObject.optString("downloadUrl");
+            String lastModified = jsonObject.optString("lastModified");
+            String eTag = jsonObject.optString("eTag");
             String saveFilePath = jsonObject.optString("saveFilePath");
             String uniqueId = jsonObject.optString("uniqueId");
 
@@ -111,6 +131,8 @@ public class DownloadRecord implements Serializable {
             }
             downloadRecord.downloadLength=downloadLength;
             downloadRecord.downloadUrl=downloadUrl;
+            downloadRecord.lastModified=lastModified;
+            downloadRecord.eTag=eTag;
             downloadRecord.saveFilePath=saveFilePath;
             downloadRecord.uniqueId=uniqueId;
 
@@ -131,6 +153,8 @@ public class DownloadRecord implements Serializable {
             jsonObject.put("fileSize", getFileSize());
             jsonObject.put("downloadLength", getDownloadLength());
             jsonObject.put("downloadUrl", getDownloadUrl());
+            jsonObject.put("lastModified", getLastModified());
+            jsonObject.put("eTag", geteTag());
             jsonObject.put("saveFilePath", getSaveFilePath());
             jsonObject.put("uniqueId", getUniqueId());
         } catch (JSONException e) {
