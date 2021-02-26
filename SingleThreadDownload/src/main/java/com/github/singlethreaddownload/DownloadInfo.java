@@ -157,7 +157,6 @@ public class DownloadInfo {
         });
     }
 
-
     private void success(final File file) {
         int status = getStatus();
         if (status == STATUS_SUCCESS) {
@@ -330,7 +329,6 @@ public class DownloadInfo {
             int responseCode = httpURLConnection.getResponseCode();
             String eTag = httpURLConnection.getHeaderField("ETag");
             String lastModified = httpURLConnection.getHeaderField("Last-Modified");
-            Log.i("=====", responseCode + "====lastModified=" + lastModified + "====eTag=" + eTag);
             long contentLengthLong = getContentLength(httpURLConnection);
             if (contentLengthLong < 0) {
                 /*有可能状态码=200，但是内容长度为null*/
@@ -368,9 +366,6 @@ public class DownloadInfo {
                 downloadRecord=null;
 
                 /*因为需要自己调用自己，所以这里提前手动关闭连接*/
-                DownloadHelper.close(randomAccessFile);
-                DownloadHelper.close(bis);
-                DownloadHelper.close(inputStream);
                 if (httpURLConnection != null) {
                     httpURLConnection.disconnect();
                 }
@@ -385,9 +380,6 @@ public class DownloadInfo {
                 downloadRecord=null;
 
                 /*因为需要自己调用自己，所以这里提前手动关闭连接*/
-                DownloadHelper.close(randomAccessFile);
-                DownloadHelper.close(bis);
-                DownloadHelper.close(inputStream);
                 if (httpURLConnection != null) {
                     httpURLConnection.disconnect();
                 }
@@ -422,9 +414,6 @@ public class DownloadInfo {
                 DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
 
                 /*因为需要自己调用自己，所以这里提前手动关闭连接*/
-                DownloadHelper.close(randomAccessFile);
-                DownloadHelper.close(bis);
-                DownloadHelper.close(inputStream);
                 if (httpURLConnection != null) {
                     httpURLConnection.disconnect();
                 }
@@ -445,7 +434,7 @@ public class DownloadInfo {
                 downloadRecord.addDownloadLength(len);
                 randomAccessFile.write(buff, 0, len);
                 progress(downloadRecord.getDownloadLength());
-                Log.i("=====", "====progress=" + downloadRecord.getDownloadLength());
+//                Log.i("=====", "====progress=" + downloadRecord.getDownloadLength());
                 if (getStatus() == STATUS_PAUSE) {
                     /*手动暂停时把内存的缓存信息保存至本地，防止暂停时保存信息之后，在return之前又写入了数据*/
                     saveDownloadCacheInfo(downloadRecord);
@@ -467,6 +456,7 @@ public class DownloadInfo {
                     });
                     return;
                 }
+                setStatus(STATUS_PROGRESS);
             }
             saveDownloadCacheInfo(downloadRecord);
             /*下载完成重命名文件*/
@@ -501,5 +491,20 @@ public class DownloadInfo {
 
     public DownloadConfig getDownloadConfig() {
         return downloadConfig;
+    }
+    private void callbackStatus(final int status){
+        DownloadHelper.get().getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                switch (status){
+                    case STATUS_PAUSE:
+                        getDownloadListener().onPause();
+                    break;
+                    case STATUS_DELETE:
+                        getDownloadListener().onDelete();
+                    break;
+                }
+            }
+        });
     }
 }
