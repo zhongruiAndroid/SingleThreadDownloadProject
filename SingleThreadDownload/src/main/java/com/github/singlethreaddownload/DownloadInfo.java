@@ -331,17 +331,20 @@ public class DownloadInfo {
             String lastModified = httpURLConnection.getHeaderField("Last-Modified");
             long contentLengthLong = getContentLength(httpURLConnection);
             if (contentLengthLong < 0) {
+                close(randomAccessFile, bis, inputStream, httpURLConnection);
                 /*有可能状态码=200，但是内容长度为null*/
                 error();
                 return;
             }
             long contentLength = contentLengthLong + startPoint;
-            connect(contentLength);
             if (contentLength <= 0) {
+                close(randomAccessFile, bis, inputStream, httpURLConnection);
                 error();
                 return;
             }
+            connect(contentLength);
             if (!DownloadHelper.hasFreeSpace(FileDownloadManager.getContext(), contentLength)) {
+                close(randomAccessFile, bis, inputStream, httpURLConnection);
                 //储存空间不足
                 error();
                 return;
@@ -356,33 +359,31 @@ public class DownloadInfo {
                 downloadRecord.setUniqueId(downloadConfig.getUnionId());
             }
             /*上次请求的eTag和lastModified,如果和这次请求返回的不一样，则从头开始下载*/
-            String preETag=downloadRecord.geteTag();
-            String preLastModified=downloadRecord.getLastModified();
-            if(!TextUtils.isEmpty(eTag)&&!TextUtils.isEmpty(preETag)&&!TextUtils.equals(eTag,preETag)){
+            String preETag = downloadRecord.geteTag();
+            String preLastModified = downloadRecord.getLastModified();
+            if (!TextUtils.isEmpty(eTag) && !TextUtils.isEmpty(preETag) && !TextUtils.equals(eTag, preETag)) {
                 /*文件被修改*/
                 removeAppStateChangeListener();
                 DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
                 DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
-                downloadRecord=null;
+                downloadRecord = null;
 
                 /*因为需要自己调用自己，所以这里提前手动关闭连接*/
-                if (httpURLConnection != null) {
-                    httpURLConnection.disconnect();
-                }
+
+                close(randomAccessFile, bis, inputStream, httpURLConnection);
 
                 downloadByChildThread();
                 return;
-            }else if(!TextUtils.isEmpty(lastModified)&&!TextUtils.isEmpty(preLastModified)&&!TextUtils.equals(lastModified,preLastModified)){
+            } else if (!TextUtils.isEmpty(lastModified) && !TextUtils.isEmpty(preLastModified) && !TextUtils.equals(lastModified, preLastModified)) {
                 /*文件被修改*/
                 removeAppStateChangeListener();
                 DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
                 DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
-                downloadRecord=null;
+                downloadRecord = null;
 
                 /*因为需要自己调用自己，所以这里提前手动关闭连接*/
-                if (httpURLConnection != null) {
-                    httpURLConnection.disconnect();
-                }
+
+                close(randomAccessFile, bis, inputStream, httpURLConnection);
 
                 downloadByChildThread();
                 return;
@@ -391,7 +392,7 @@ public class DownloadInfo {
                 downloadRecord.seteTag(eTag);
             } else if (!TextUtils.isEmpty(lastModified)) {
                 downloadRecord.setLastModified(lastModified);
-            }else{
+            } else {
                 downloadRecord.seteTag("");
                 downloadRecord.setLastModified("");
             }
@@ -400,7 +401,7 @@ public class DownloadInfo {
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 /*不支持范围下载*/
                 /*从头下载*/
-                startPoint=0;
+                startPoint = 0;
                 downloadRecord.setDownloadLength(0);
                 /*如果本地存在之前下载一部分的文件，先删除*/
                 DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
@@ -408,7 +409,8 @@ public class DownloadInfo {
             } else if (responseCode == HttpURLConnection.HTTP_PARTIAL) {
                 /*支持范围下载*/
             } else if (responseCode == HttpURLConnection.HTTP_PRECON_FAILED) {
-                /*断点下载文件发生了变化*/
+                close(randomAccessFile, bis, inputStream, httpURLConnection);
+
                 removeAppStateChangeListener();
                 DownloadHelper.deleteFile(getDownloadConfig().getTempSaveFile());
                 DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
@@ -421,6 +423,7 @@ public class DownloadInfo {
                 downloadByChildThread();
                 return;
             } else {
+                close(randomAccessFile, bis, inputStream, httpURLConnection);
                 error();
                 return;
             }
@@ -436,6 +439,7 @@ public class DownloadInfo {
                 progress(downloadRecord.getDownloadLength());
 //                Log.i("=====", "====progress=" + downloadRecord.getDownloadLength());
                 if (getStatus() == STATUS_PAUSE) {
+                    close(randomAccessFile, bis, inputStream, httpURLConnection);
                     /*手动暂停时把内存的缓存信息保存至本地，防止暂停时保存信息之后，在return之前又写入了数据*/
                     saveDownloadCacheInfo(downloadRecord);
                     DownloadHelper.get().getHandler().post(new Runnable() {
@@ -447,6 +451,7 @@ public class DownloadInfo {
                     return;
                 }
                 if (getStatus() == STATUS_DELETE) {
+                    close(randomAccessFile, bis, inputStream, httpURLConnection);
                     saveDownloadCacheInfo(downloadRecord);
                     DownloadHelper.get().getHandler().post(new Runnable() {
                         @Override
@@ -463,18 +468,22 @@ public class DownloadInfo {
             getDownloadConfig().getTempSaveFile().renameTo(downloadConfig.getSaveFile());
             success(downloadConfig.getSaveFile());
         } catch (Exception e) {
+            /*不在finally里面执行，防止回调方法里面继续调用下载，在未关闭http的情况下继续请求*/
+            close(randomAccessFile, bis, inputStream, httpURLConnection);
+
             saveDownloadCacheInfo(downloadRecord);
             e.printStackTrace();
             error();
             return;
-        } finally {
-            DownloadHelper.close(randomAccessFile);
-            DownloadHelper.close(bis);
-            DownloadHelper.close(inputStream);
-            if (httpURLConnection != null) {
-                httpURLConnection.disconnect();
-            }
         }
+    }
+
+    private void close(RandomAccessFile randomAccessFile, BufferedInputStream bis, InputStream inputStream, HttpURLConnection httpURLConnection) {
+        /*不在finally里面执行，防止回调方法里面继续调用下载，在未关闭http的情况下继续请求*/
+        DownloadHelper.close(randomAccessFile);
+        DownloadHelper.close(bis);
+        DownloadHelper.close(inputStream);
+        DownloadHelper.close(httpURLConnection);
     }
 
     /*保存当前下载进度*/
@@ -492,17 +501,18 @@ public class DownloadInfo {
     public DownloadConfig getDownloadConfig() {
         return downloadConfig;
     }
-    private void callbackStatus(final int status){
+
+    private void callbackStatus(final int status) {
         DownloadHelper.get().getHandler().post(new Runnable() {
             @Override
             public void run() {
-                switch (status){
+                switch (status) {
                     case STATUS_PAUSE:
                         getDownloadListener().onPause();
-                    break;
+                        break;
                     case STATUS_DELETE:
                         getDownloadListener().onDelete();
-                    break;
+                        break;
                 }
             }
         });

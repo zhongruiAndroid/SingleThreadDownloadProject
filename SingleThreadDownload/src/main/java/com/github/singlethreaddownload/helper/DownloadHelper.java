@@ -14,6 +14,7 @@ import com.github.singlethreaddownload.FileDownloadManager;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -63,7 +64,11 @@ public class DownloadHelper {
             e.printStackTrace();
         }
     }
-
+    public static void close(HttpURLConnection httpURLConnection){
+        if (httpURLConnection != null) {
+            httpURLConnection.disconnect();
+        }
+    }
     public static void deleteFile(File file) {
         if (file == null) {
             return;
