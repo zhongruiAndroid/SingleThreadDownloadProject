@@ -294,8 +294,8 @@ public class DownloadInfo {
 
             startPoint = 0;
         } else {
-            downloadRecord.setDownloadLength(downloadRecord.getDownloadLength() - 1);
             /*因为断点下载的起始位置减一，相应的已经下载的长度也要减一*/
+            /*取出数据时已经减一*/
             startPoint = downloadRecord.getDownloadLength();
             if (startPoint < 0) {
                 startPoint = 0;
