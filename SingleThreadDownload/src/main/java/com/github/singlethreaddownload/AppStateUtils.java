@@ -3,7 +3,7 @@ package com.github.singlethreaddownload;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
-import android.support.v4.util.SparseArrayCompat;
+import android.util.SparseArray;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -15,7 +15,7 @@ class AppStateUtils {
         void onStateChange(boolean intoFront);
     }
 
-    private SparseArrayCompat<AppStateChangeListener> stateChangeListenerMap;
+    private SparseArray<AppStateChangeListener> stateChangeListenerMap;
 
     /*0:后台，1：前台*/
     private boolean currentStateIsFront;
@@ -29,7 +29,7 @@ class AppStateUtils {
     private Application.ActivityLifecycleCallbacks activityLifecycleCallbacks;
 
     private AppStateUtils() {
-        stateChangeListenerMap = new SparseArrayCompat<>();
+        stateChangeListenerMap = new SparseArray<>();
         atomicInteger = new AtomicInteger();
         firstIntoApp = true;
         currentStateIsFront = true;
