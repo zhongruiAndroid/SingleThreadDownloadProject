@@ -8,6 +8,30 @@ import com.github.singlethreaddownload.listener.FileDownloadListener;
 
 public class FileDownloadManager {
     private static Context context;
+    private static int connectTimeout=10000;
+    private static int readTimeout=10000;
+
+    public static void setConnectTimeout(int connectTimeout) {
+        FileDownloadManager.connectTimeout = connectTimeout;
+    }
+
+    public static void setReadTimeout(int readTimeout) {
+        FileDownloadManager.readTimeout = readTimeout;
+    }
+
+    public static int getConnectTimeout() {
+        if(connectTimeout<1000){
+            connectTimeout=10000;
+        }
+        return connectTimeout;
+    }
+
+    public static int getReadTimeout() {
+        if(readTimeout<1000){
+            readTimeout=10000;
+        }
+        return readTimeout;
+    }
 
     public static Context getContext() {
         if (context == null) {

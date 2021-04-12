@@ -12,6 +12,8 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 
 public class DownloadInfo {
@@ -143,8 +145,11 @@ public class DownloadInfo {
     }
 
 
-    private void error() {
-        if (downloadConfig != null) {
+    private void error( ) {
+        error(false);
+    }
+    private void error(boolean notClearCache) {
+        if (downloadConfig != null&&!notClearCache) {
             DownloadHelper.deleteFile(downloadConfig.getTempSaveFile());
             DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
         }
@@ -319,8 +324,8 @@ public class DownloadInfo {
             setStatus(STATUS_REQUEST);
             URL url = new URL(downloadConfig.getFileDownloadUrl());
             httpURLConnection = (HttpURLConnection) url.openConnection();
-            httpURLConnection.setConnectTimeout(30000);
-            httpURLConnection.setReadTimeout(30000);
+            httpURLConnection.setConnectTimeout(FileDownloadManager.getConnectTimeout());
+            httpURLConnection.setReadTimeout(FileDownloadManager.getReadTimeout());
             httpURLConnection.setRequestProperty("Range", "bytes=" + startPoint + "-");
             /*使用If-Range遇到每次都会返回200的情况*/
             /*使用If-Match遇到经常返回412的情况*/
@@ -473,7 +478,7 @@ public class DownloadInfo {
 
             saveDownloadCacheInfo(downloadRecord);
             e.printStackTrace();
-            error();
+            error(e instanceof SocketTimeoutException||e instanceof SocketException);
             return;
         }
     }
