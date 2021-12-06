@@ -320,6 +320,7 @@ public class DownloadInfo {
         // 随机访问文件，可以指定断点续传的起始位置
         BufferedInputStream bis = null;
         RandomAccessFile randomAccessFile = null;
+        boolean notClearCache=false;
         try {
             setStatus(STATUS_REQUEST);
             URL url = new URL(downloadConfig.getFileDownloadUrl());
@@ -438,6 +439,8 @@ public class DownloadInfo {
             bis = new BufferedInputStream(inputStream);
             randomAccessFile = new RandomAccessFile(downloadConfig.getTempSaveFile(), "rw");
             randomAccessFile.seek(startPoint);
+            /*防止下载期间网络出问题清除已下载部分*/
+            notClearCache=true;
             while ((len = bis.read(buff)) != -1) {
                 downloadRecord.addDownloadLength(len);
                 randomAccessFile.write(buff, 0, len);
@@ -475,10 +478,9 @@ public class DownloadInfo {
         } catch (Exception e) {
             /*不在finally里面执行，防止回调方法里面继续调用下载，在未关闭http的情况下继续请求*/
             close(randomAccessFile, bis, inputStream, httpURLConnection);
-
             saveDownloadCacheInfo(downloadRecord);
             e.printStackTrace();
-            error(e instanceof SocketTimeoutException||e instanceof SocketException);
+            error(notClearCache);
             return;
         }
     }
