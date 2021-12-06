@@ -152,6 +152,9 @@ public class DownloadInfo {
         if (downloadConfig != null&&!notClearCache) {
             DownloadHelper.deleteFile(downloadConfig.getTempSaveFile());
             DownloadHelper.get().clearRecordByUnionId(downloadConfig.getDownloadSPName(), downloadConfig.getUnionId());
+        }else{
+            /*如果没切换前后台，手动保存下载进度*/
+            saveDownloadCacheInfo(downloadRecord);
         }
         setStatus(STATUS_ERROR);
         DownloadHelper.get().getHandler().post(new Runnable() {
